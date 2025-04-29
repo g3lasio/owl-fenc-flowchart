@@ -1,0 +1,41 @@
+{
+  "name": "owl-fence-estimator-backend",
+  "version": "1.0.0",
+  "description": "Backend para Owl Fence Estimator con motores DeepSearch para generación de estimados",
+  "main": "dist/index.js",
+  "scripts": {
+    "start": "node dist/index.js",
+    "dev": "ts-node -r tsconfig-paths/register src/index.ts",
+    "build": "tsc",
+    "watch": "tsc -w",
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "test:materials": "ts-node -r tsconfig-paths/register src/test-material-engine.ts"
+  },
+  "keywords": ["estimate", "fencing", "ai", "deepsearch"],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.40.0",
+    "@supabase/supabase-js": "^2.49.4",
+    "@types/express": "^5.0.1",
+    "@types/node": "^22.15.3",
+    "axios": "^1.9.0",
+    "bullmq": "^5.51.1",
+    "cors": "^2.8.5",
+    "dotenv": "^16.5.0",
+    "express": "^5.1.0",
+    "html-pdf-node": "^1.0.8",
+    "node-cache": "^5.1.2",
+    "openai": "^4.96.0",
+    "pdfkit": "^0.17.0",
+    "puppeteer": "^24.7.2",
+    "redis": "^4.7.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.8.3",
+    "uuid": "^11.1.0"
+  },
+  "devDependencies": {
+    "@types/uuid": "^10.0.0",
+    "tsconfig-paths": "^4.2.0"
+  }
+}
