@@ -1,0 +1,788 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title><%= title %></title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    body {
+      padding: 20px;
+      background-color: #f8f9fa;
+    }
+    .card {
+      margin-bottom: 20px;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    }
+    .result-container {
+      max-height: 600px;
+      overflow-y: auto;
+    }
+    .loading-spinner {
+      display: none;
+      text-align: center;
+      padding: 20px;
+    }
+    .material-row:nth-child(even) {
+      background-color: rgba(0,0,0,0.05);
+    }
+    .service-row:nth-child(even) {
+      background-color: rgba(0,0,0,0.05);
+    }
+    #dimension-fields, #option-fields {
+      transition: all 0.3s ease;
+    }
+    .cost-highlight {
+      font-weight: bold;
+      color: #0d6efd;
+    }
+    .step-item {
+      margin-bottom: 5px;
+    }
+    .material-item, .service-item {
+      padding: 8px;
+      border-bottom: 1px solid #dee2e6;
+    }
+    .material-item:last-child, .service-item:last-child {
+      border-bottom: none;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1 class="text-center mb-4">Motor DeepSearch - Interfaz de Pruebas</h1>
+    
+    <div class="row">
+      <div class="col-md-5">
+        <div class="card">
+          <div class="card-header bg-primary text-white">
+            <h4 class="mb-0">Datos del Proyecto</h4>
+          </div>
+          <div class="card-body">
+            <form id="project-form">
+              <!-- Tipo de Proyecto -->
+              <div class="mb-3">
+                <label for="project-type" class="form-label">Tipo de Proyecto:</label>
+                <select class="form-select" id="project-type" required>
+                  <option value="" selected disabled>Seleccione un tipo de proyecto</option>
+                </select>
+              </div>
+              
+              <!-- Subtipo de Proyecto -->
+              <div class="mb-3">
+                <label for="project-subtype" class="form-label">Subtipo:</label>
+                <select class="form-select" id="project-subtype" required disabled>
+                  <option value="" selected disabled>Seleccione primero un tipo de proyecto</option>
+                </select>
+              </div>
+              
+              <!-- Dimensiones del Proyecto -->
+              <div class="mb-3">
+                <label class="form-label">Dimensiones:</label>
+                <div id="dimension-fields" class="card p-3">
+                  <p class="text-muted small">Las dimensiones disponibles se cargarán según el tipo de proyecto seleccionado.</p>
+                </div>
+              </div>
+              
+              <!-- Opciones del Proyecto -->
+              <div class="mb-3">
+                <label class="form-label">Opciones:</label>
+                <div id="option-fields" class="card p-3">
+                  <p class="text-muted small">Las opciones disponibles se cargarán según el tipo de proyecto seleccionado.</p>
+                </div>
+              </div>
+              
+              <!-- Ubicación del Proyecto -->
+              <div class="mb-3">
+                <label class="form-label">Ubicación:</label>
+                <div class="card p-3">
+                  <div class="mb-2">
+                    <label for="location-city" class="form-label">Ciudad:</label>
+                    <input type="text" class="form-control" id="location-city" required>
+                  </div>
+                  <div class="mb-2">
+                    <label for="location-state" class="form-label">Estado:</label>
+                    <input type="text" class="form-control" id="location-state" required>
+                  </div>
+                  <div>
+                    <label for="location-zipcode" class="form-label">Código Postal:</label>
+                    <input type="text" class="form-control" id="location-zipcode" required>
+                  </div>
+                </div>
+              </div>
+              
+              <button type="submit" class="btn btn-primary w-100">Analizar Proyecto</button>
+            </form>
+          </div>
+        </div>
+      </div>
+      
+      <div class="col-md-7">
+        <div class="loading-spinner" id="loading-spinner">
+          <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">Cargando...</span>
+          </div>
+          <p class="mt-2">Analizando proyecto con DeepSearch Engine...</p>
+          <p class="text-muted small">Este proceso puede tardar hasta 2 minutos</p>
+        </div>
+        
+        <div class="card d-none" id="result-card">
+          <div class="card-header bg-success text-white">
+            <h4 class="mb-0">Resultados del Análisis</h4>
+          </div>
+          <div class="card-body result-container">
+            <h5>Resumen del Proyecto</h5>
+            <div class="mb-4" id="project-summary">
+              <!-- Se llenará con JavaScript -->
+            </div>
+            
+            <h5>Materiales Necesarios</h5>
+            <div class="mb-4 table-responsive">
+              <table class="table table-sm table-hover">
+                <thead class="table-light">
+                  <tr>
+                    <th>Material</th>
+                    <th>Cantidad</th>
+                    <th>Precio Unitario</th>
+                    <th>Subtotal</th>
+                  </tr>
+                </thead>
+                <tbody id="materials-list">
+                  <!-- Se llenará con JavaScript -->
+                </tbody>
+                <tfoot>
+                  <tr class="table-primary">
+                    <th colspan="3">Total Materiales:</th>
+                    <th id="materials-total">$0.00</th>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+            
+            <h5>Servicios y Mano de Obra</h5>
+            <div class="mb-4 table-responsive">
+              <table class="table table-sm table-hover">
+                <thead class="table-light">
+                  <tr>
+                    <th>Servicio</th>
+                    <th>Horas</th>
+                    <th>Tarifa</th>
+                    <th>Subtotal</th>
+                  </tr>
+                </thead>
+                <tbody id="services-list">
+                  <!-- Se llenará con JavaScript -->
+                </tbody>
+                <tfoot>
+                  <tr class="table-primary">
+                    <th colspan="3">Total Servicios:</th>
+                    <th id="services-total">$0.00</th>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+            
+            <h5>Método de Construcción</h5>
+            <div class="mb-4">
+              <div class="card">
+                <div class="card-body">
+                  <p id="construction-method-description"></p>
+                  <h6>Pasos:</h6>
+                  <ol id="construction-steps">
+                    <!-- Se llenará con JavaScript -->
+                  </ol>
+                </div>
+              </div>
+            </div>
+            
+            <h5>Resumen de Costos</h5>
+            <div class="mb-4">
+              <div class="card">
+                <div class="card-body">
+                  <table class="table table-borderless">
+                    <tbody>
+                      <tr>
+                        <td>Costo de Materiales:</td>
+                        <td class="text-end" id="summary-materials">$0.00</td>
+                      </tr>
+                      <tr>
+                        <td>Costo de Mano de Obra:</td>
+                        <td class="text-end" id="summary-labor">$0.00</td>
+                      </tr>
+                      <tr>
+                        <td>Costo de Equipos:</td>
+                        <td class="text-end" id="summary-equipment">$0.00</td>
+                      </tr>
+                      <tr>
+                        <td>Margen Recomendado:</td>
+                        <td class="text-end" id="summary-markup">$0.00</td>
+                      </tr>
+                      <tr class="table-primary">
+                        <th>COSTO TOTAL:</th>
+                        <th class="text-end" id="summary-total">$0.00</th>
+                      </tr>
+                      <tr>
+                        <td>Precio por Unidad:</td>
+                        <td class="text-end" id="summary-unit-price">$0.00</td>
+                      </tr>
+                      <tr>
+                        <td>Tiempo Estimado:</td>
+                        <td class="text-end" id="summary-time">0 días</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+            
+            <div class="mt-3">
+              <button class="btn btn-secondary" id="btn-new-project">Nuevo Proyecto</button>
+              <button class="btn btn-primary" id="btn-export">Exportar Resultados</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      // Cargar tipos de proyectos al iniciar
+      fetchProjectTypes();
+      
+      // Event listeners
+      document.getElementById('project-type').addEventListener('change', handleProjectTypeChange);
+      document.getElementById('project-subtype').addEventListener('change', handleProjectSubtypeChange);
+      document.getElementById('project-form').addEventListener('submit', handleFormSubmit);
+      document.getElementById('btn-new-project').addEventListener('click', resetForm);
+      document.getElementById('btn-export').addEventListener('click', exportResults);
+      
+      // Configuración de campos por tipo de proyecto
+      const projectFieldConfigs = {
+        'fencing': {
+          dimensions: [
+            { id: 'length', label: 'Longitud (pies)', type: 'number', required: true },
+            { id: 'height', label: 'Altura (pies)', type: 'number', required: true },
+            { id: 'gates', label: 'Cantidad de Puertas', type: 'number', required: false, default: 0 }
+          ],
+          options: [
+            { id: 'style', label: 'Estilo', type: 'select', options: [
+              { value: 'privacy', label: 'Privacidad' },
+              { value: 'semi-privacy', label: 'Semi-privacidad' },
+              { value: 'picket', label: 'Empalizada' },
+              { value: 'ranch', label: 'Rancho' }
+            ]},
+            { id: 'color', label: 'Color', type: 'text', required: false }
+          ]
+        },
+        'decking': {
+          dimensions: [
+            { id: 'squareFeet', label: 'Superficie (pies cuadrados)', type: 'number', required: true },
+            { id: 'shape', label: 'Forma', type: 'select', options: [
+              { value: 'rectangular', label: 'Rectangular' },
+              { value: 'custom', label: 'Personalizada' }
+            ]},
+            { id: 'height', label: 'Altura desde el Suelo (pies)', type: 'number', required: true }
+          ],
+          options: [
+            { id: 'railingType', label: 'Tipo de Barandilla', type: 'select', options: [
+              { value: 'matching', label: 'Del mismo material' },
+              { value: 'metal', label: 'Metal' },
+              { value: 'glass', label: 'Vidrio' },
+              { value: 'none', label: 'Sin barandilla' }
+            ]},
+            { id: 'stairs', label: '¿Incluye Escaleras?', type: 'checkbox' }
+          ]
+        },
+        'concrete': {
+          dimensions: [
+            { id: 'squareFeet', label: 'Superficie (pies cuadrados)', type: 'number', required: true },
+            { id: 'thickness', label: 'Grosor (pulgadas)', type: 'number', required: true }
+          ],
+          options: [
+            { id: 'finish', label: 'Acabado', type: 'select', options: [
+              { value: 'broom', label: 'Escobillado' },
+              { value: 'stamped', label: 'Estampado' },
+              { value: 'exposed-aggregate', label: 'Árido visto' },
+              { value: 'smooth', label: 'Liso' }
+            ]},
+            { id: 'reinforcement', label: 'Refuerzo', type: 'select', options: [
+              { value: 'wire-mesh', label: 'Malla de Alambre' },
+              { value: 'rebar', label: 'Barras de Refuerzo' },
+              { value: 'fiber', label: 'Fibra' },
+              { value: 'none', label: 'Sin Refuerzo' }
+            ]}
+          ]
+        },
+        'roofing': {
+          dimensions: [
+            { id: 'squareFeet', label: 'Superficie (pies cuadrados)', type: 'number', required: true },
+            { id: 'pitch', label: 'Inclinación (ej: 6:12)', type: 'text', required: true },
+            { id: 'stories', label: 'Altura del Edificio (pisos)', type: 'number', required: true }
+          ],
+          options: [
+            { id: 'layers', label: 'Capas Existentes a Remover', type: 'number', default: 0 },
+            { id: 'ventilation', label: 'Tipo de Ventilación', type: 'select', options: [
+              { value: 'ridge-vent', label: 'Ventilación de Cumbrera' },
+              { value: 'gable-vents', label: 'Ventilación de Frontón' },
+              { value: 'soffit-vents', label: 'Ventilación de Sofito' },
+              { value: 'none', label: 'Sin Ventilación Adicional' }
+            ]}
+          ]
+        }
+      };
+      
+      // Función para cargar tipos de proyectos
+      function fetchProjectTypes() {
+        fetch('/api/deepsearch/project-types')
+          .then(response => response.json())
+          .then(data => {
+            const select = document.getElementById('project-type');
+            
+            // Limpiar opciones existentes excepto la predeterminada
+            const defaultOption = select.querySelector('option[disabled]');
+            select.innerHTML = '';
+            select.appendChild(defaultOption);
+            
+            // Agregar nuevas opciones
+            for (const [key, value] of Object.entries(data)) {
+              const option = document.createElement('option');
+              option.value = key;
+              option.textContent = value.name;
+              select.appendChild(option);
+            }
+          })
+          .catch(error => console.error('Error al cargar tipos de proyectos:', error));
+      }
+      
+      // Manejar cambio en tipo de proyecto
+      function handleProjectTypeChange(event) {
+        const projectType = event.target.value;
+        const subtypeSelect = document.getElementById('project-subtype');
+        
+        // Reiniciar el select de subtipo
+        subtypeSelect.innerHTML = '<option value="" selected disabled>Seleccione un subtipo</option>';
+        subtypeSelect.disabled = true;
+        
+        if (projectType) {
+          // Cargar subtipos para el tipo seleccionado
+          fetch('/api/deepsearch/project-types')
+            .then(response => response.json())
+            .then(data => {
+              if (data[projectType] && data[projectType].subtypes) {
+                // Habilitar select y agregar opciones
+                subtypeSelect.disabled = false;
+                
+                data[projectType].subtypes.forEach(subtype => {
+                  const option = document.createElement('option');
+                  option.value = subtype.id;
+                  option.textContent = subtype.name;
+                  subtypeSelect.appendChild(option);
+                });
+              }
+            })
+            .catch(error => console.error('Error al cargar subtipos:', error));
+          
+          // Cargar campos de dimensiones específicos para este tipo
+          loadDimensionFields(projectType);
+          loadOptionFields(projectType);
+        } else {
+          // Limpiar campos si no hay tipo seleccionado
+          document.getElementById('dimension-fields').innerHTML = 
+            '<p class="text-muted small">Las dimensiones disponibles se cargarán según el tipo de proyecto seleccionado.</p>';
+          document.getElementById('option-fields').innerHTML = 
+            '<p class="text-muted small">Las opciones disponibles se cargarán según el tipo de proyecto seleccionado.</p>';
+        }
+      }
+      
+      // Manejar cambio en subtipo de proyecto
+      function handleProjectSubtypeChange(event) {
+        // Aquí podríamos ajustar campos específicos según el subtipo si es necesario
+      }
+      
+      // Cargar campos de dimensiones según el tipo de proyecto
+      function loadDimensionFields(projectType) {
+        const container = document.getElementById('dimension-fields');
+        container.innerHTML = '';
+        
+        const config = projectFieldConfigs[projectType];
+        if (!config || !config.dimensions) return;
+        
+        config.dimensions.forEach(field => {
+          const fieldGroup = document.createElement('div');
+          fieldGroup.className = 'mb-2';
+          
+          const label = document.createElement('label');
+          label.className = 'form-label';
+          label.htmlFor = `dim-${field.id}`;
+          label.textContent = field.label;
+          
+          let input;
+          
+          if (field.type === 'select') {
+            input = document.createElement('select');
+            input.className = 'form-select';
+            
+            field.options.forEach(opt => {
+              const option = document.createElement('option');
+              option.value = opt.value;
+              option.textContent = opt.label;
+              input.appendChild(option);
+            });
+          } else {
+            input = document.createElement('input');
+            input.className = 'form-control';
+            input.type = field.type;
+            
+            if (field.default !== undefined) {
+              input.value = field.default;
+            }
+          }
+          
+          input.id = `dim-${field.id}`;
+          input.name = `dimension-${field.id}`;
+          if (field.required) input.required = true;
+          
+          fieldGroup.appendChild(label);
+          fieldGroup.appendChild(input);
+          container.appendChild(fieldGroup);
+        });
+      }
+      
+      // Cargar campos de opciones según el tipo de proyecto
+      function loadOptionFields(projectType) {
+        const container = document.getElementById('option-fields');
+        container.innerHTML = '';
+        
+        const config = projectFieldConfigs[projectType];
+        if (!config || !config.options) return;
+        
+        config.options.forEach(field => {
+          const fieldGroup = document.createElement('div');
+          fieldGroup.className = 'mb-2';
+          
+          if (field.type === 'checkbox') {
+            const checkDiv = document.createElement('div');
+            checkDiv.className = 'form-check';
+            
+            const input = document.createElement('input');
+            input.className = 'form-check-input';
+            input.type = 'checkbox';
+            input.id = `opt-${field.id}`;
+            input.name = `option-${field.id}`;
+            
+            const label = document.createElement('label');
+            label.className = 'form-check-label';
+            label.htmlFor = `opt-${field.id}`;
+            label.textContent = field.label;
+            
+            checkDiv.appendChild(input);
+            checkDiv.appendChild(label);
+            fieldGroup.appendChild(checkDiv);
+          } else {
+            const label = document.createElement('label');
+            label.className = 'form-label';
+            label.htmlFor = `opt-${field.id}`;
+            label.textContent = field.label;
+            
+            let input;
+            
+            if (field.type === 'select') {
+              input = document.createElement('select');
+              input.className = 'form-select';
+              
+              field.options.forEach(opt => {
+                const option = document.createElement('option');
+                option.value = opt.value;
+                option.textContent = opt.label;
+                input.appendChild(option);
+              });
+            } else {
+              input = document.createElement('input');
+              input.className = 'form-control';
+              input.type = field.type;
+              
+              if (field.default !== undefined) {
+                input.value = field.default;
+              }
+            }
+            
+            input.id = `opt-${field.id}`;
+            input.name = `option-${field.id}`;
+            if (field.required) input.required = true;
+            
+            fieldGroup.appendChild(label);
+            fieldGroup.appendChild(input);
+          }
+          
+          container.appendChild(fieldGroup);
+        });
+      }
+      
+      // Manejar envío del formulario
+      function handleFormSubmit(event) {
+        event.preventDefault();
+        
+        // Mostrar spinner de carga y ocultar resultados si estaban visibles
+        document.getElementById('loading-spinner').style.display = 'block';
+        document.getElementById('result-card').classList.add('d-none');
+        
+        // Recopilar datos del formulario
+        const projectType = document.getElementById('project-type').value;
+        const projectSubtype = document.getElementById('project-subtype').value;
+        
+        // Recopilar dimensiones
+        const dimensions = {};
+        const config = projectFieldConfigs[projectType];
+        
+        if (config && config.dimensions) {
+          config.dimensions.forEach(field => {
+            const input = document.getElementById(`dim-${field.id}`);
+            if (input.type === 'number') {
+              dimensions[field.id] = parseFloat(input.value);
+            } else {
+              dimensions[field.id] = input.value;
+            }
+          });
+        }
+        
+        // Recopilar opciones
+        const options = {};
+        
+        if (config && config.options) {
+          config.options.forEach(field => {
+            const input = document.getElementById(`opt-${field.id}`);
+            if (input.type === 'checkbox') {
+              options[field.id] = input.checked;
+            } else if (input.type === 'number') {
+              options[field.id] = parseFloat(input.value);
+            } else {
+              options[field.id] = input.value;
+            }
+          });
+        }
+        
+        // Recopilar ubicación
+        const location = {
+          city: document.getElementById('location-city').value,
+          state: document.getElementById('location-state').value,
+          zipCode: document.getElementById('location-zipcode').value
+        };
+        
+        // Datos para enviar a la API
+        const requestData = {
+          projectType,
+          projectSubtype,
+          dimensions,
+          options,
+          location
+        };
+        
+        console.log('Enviando datos:', requestData);
+        
+        // Enviar solicitud a la API
+        fetch('/api/deepsearch/analyze', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(requestData)
+        })
+        .then(response => {
+          if (!response.ok) {
+            throw new Error('Error en la respuesta de la API');
+          }
+          return response.json();
+        })
+        .then(data => {
+          // Ocultar spinner y mostrar resultados
+          document.getElementById('loading-spinner').style.display = 'none';
+          document.getElementById('result-card').classList.remove('d-none');
+          
+          // Renderizar resultados
+          renderResults(data, requestData);
+        })
+        .catch(error => {
+          console.error('Error:', error);
+          document.getElementById('loading-spinner').style.display = 'none';
+          alert('Error al procesar la solicitud. Por favor intente nuevamente.');
+        });
+      }
+      
+      // Renderizar resultados
+      function renderResults(data, requestData) {
+        // 1. Resumen del proyecto
+        const projectSummary = document.getElementById('project-summary');
+        projectSummary.innerHTML = `
+          <div class="card">
+            <div class="card-body">
+              <p><strong>Tipo de Proyecto:</strong> ${getProjectTypeName(requestData.projectType)}</p>
+              <p><strong>Subtipo:</strong> ${getProjectSubtypeName(requestData.projectType, requestData.projectSubtype)}</p>
+              <p><strong>Ubicación:</strong> ${requestData.location.city}, ${requestData.location.state} ${requestData.location.zipCode}</p>
+              <p><strong>Dimensiones:</strong> ${formatDimensions(requestData.dimensions)}</p>
+            </div>
+          </div>
+        `;
+        
+        // 2. Lista de materiales
+        const materialsList = document.getElementById('materials-list');
+        materialsList.innerHTML = '';
+        
+        data.materials.forEach(material => {
+          const row = document.createElement('tr');
+          row.className = 'material-row';
+          
+          const subtotal = material.quantity * material.unitPrice;
+          
+          row.innerHTML = `
+            <td>
+              <div><strong>${material.name}</strong></div>
+              <div class="text-muted small">${material.description || ''}</div>
+            </td>
+            <td>${material.quantity} ${material.unit}</td>
+            <td>$${material.unitPrice.toFixed(2)}</td>
+            <td>$${subtotal.toFixed(2)}</td>
+          `;
+          
+          materialsList.appendChild(row);
+        });
+        
+        document.getElementById('materials-total').textContent = `$${data.materialCost.toFixed(2)}`;
+        
+        // 3. Lista de servicios
+        const servicesList = document.getElementById('services-list');
+        servicesList.innerHTML = '';
+        
+        data.services.forEach(service => {
+          const row = document.createElement('tr');
+          row.className = 'service-row';
+          
+          const subtotal = service.hours * service.hourlyRate;
+          
+          row.innerHTML = `
+            <td>
+              <div><strong>${service.name}</strong></div>
+              <div class="text-muted small">${service.description || ''}</div>
+            </td>
+            <td>${service.hours}</td>
+            <td>$${service.hourlyRate.toFixed(2)}/hr</td>
+            <td>$${subtotal.toFixed(2)}</td>
+          `;
+          
+          servicesList.appendChild(row);
+        });
+        
+        document.getElementById('services-total').textContent = `$${data.laborCost.toFixed(2)}`;
+        
+        // 4. Método de construcción
+        document.getElementById('construction-method-description').textContent = data.constructionMethod;
+        
+        const constructionSteps = document.getElementById('construction-steps');
+        constructionSteps.innerHTML = '';
+        
+        if (Array.isArray(data.constructionSteps)) {
+          data.constructionSteps.forEach(step => {
+            const li = document.createElement('li');
+            li.className = 'step-item';
+            li.textContent = step;
+            constructionSteps.appendChild(li);
+          });
+        }
+        
+        // 5. Resumen de costos
+        document.getElementById('summary-materials').textContent = `$${data.materialCost.toFixed(2)}`;
+        document.getElementById('summary-labor').textContent = `$${data.laborCost.toFixed(2)}`;
+        document.getElementById('summary-equipment').textContent = `$${data.equipmentCost.toFixed(2)}`;
+        document.getElementById('summary-markup').textContent = `$${data.recommendedMarkup.toFixed(2)}`;
+        document.getElementById('summary-total').textContent = `$${data.totalCost.toFixed(2)}`;
+        document.getElementById('summary-unit-price').textContent = `$${data.pricePerUnit.toFixed(2)}/unidad`;
+        
+        const timeEstimate = data.timeEstimate 
+          ? `${data.timeEstimate.minDays}-${data.timeEstimate.maxDays} días`
+          : 'No disponible';
+        document.getElementById('summary-time').textContent = timeEstimate;
+        
+        // Guardar datos para exportación
+        window.lastResults = {
+          project: requestData,
+          results: data
+        };
+      }
+      
+      // Función para obtener el nombre del tipo de proyecto
+      function getProjectTypeName(projectTypeId) {
+        const projectTypeLabels = {
+          'fencing': 'Vallas y Cercas',
+          'decking': 'Terrazas y Deck',
+          'concrete': 'Proyectos de Concreto',
+          'roofing': 'Techos'
+        };
+        
+        return projectTypeLabels[projectTypeId] || projectTypeId;
+      }
+      
+      // Función para obtener el nombre del subtipo de proyecto
+      function getProjectSubtypeName(projectTypeId, subtypeId) {
+        // Esta función requeriría mantener un mapa de nombres
+        // Por ahora devolvemos el ID como está
+        return subtypeId;
+      }
+      
+      // Función para formatear dimensiones
+      function formatDimensions(dimensions) {
+        return Object.entries(dimensions)
+          .map(([key, value]) => {
+            // Formateo personalizado según la clave
+            if (key === 'squareFeet') {
+              return `${value} pies cuadrados`;
+            } else if (key === 'length') {
+              return `${value} pies de longitud`;
+            } else if (key === 'height') {
+              return `${value} pies de altura`;
+            } else if (key === 'thickness') {
+              return `${value} pulgadas de grosor`;
+            }
+            return `${key}: ${value}`;
+          })
+          .join(', ');
+      }
+      
+      // Función para resetear el formulario
+      function resetForm() {
+        document.getElementById('project-form').reset();
+        document.getElementById('project-subtype').disabled = true;
+        document.getElementById('dimension-fields').innerHTML = 
+          '<p class="text-muted small">Las dimensiones disponibles se cargarán según el tipo de proyecto seleccionado.</p>';
+        document.getElementById('option-fields').innerHTML = 
+          '<p class="text-muted small">Las opciones disponibles se cargarán según el tipo de proyecto seleccionado.</p>';
+        
+        document.getElementById('result-card').classList.add('d-none');
+      }
+      
+      // Función para exportar resultados
+      function exportResults() {
+        if (!window.lastResults) {
+          alert('No hay resultados para exportar');
+          return;
+        }
+        
+        // Crear un objeto para la exportación
+        const exportData = {
+          timestamp: new Date().toISOString(),
+          ...window.lastResults
+        };
+        
+        // Crear archivo para descarga
+        const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(exportData, null, 2));
+        const downloadAnchorNode = document.createElement('a');
+        downloadAnchorNode.setAttribute("href", dataStr);
+        downloadAnchorNode.setAttribute("download", `proyecto-${exportData.project.projectType}-${new Date().getTime()}.json`);
+        document.body.appendChild(downloadAnchorNode);
+        downloadAnchorNode.click();
+        downloadAnchorNode.remove();
+      }
+    });
+  </script>
+</body>
+</html>

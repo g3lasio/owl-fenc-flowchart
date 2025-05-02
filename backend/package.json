@@ -11,7 +11,12 @@
     "test": "echo \"Error: no test specified\" && exit 1",
     "test:materials": "ts-node -r tsconfig-paths/register src/test-material-engine.ts"
   },
-  "keywords": ["estimate", "fencing", "ai", "deepsearch"],
+  "keywords": [
+    "estimate",
+    "fencing",
+    "ai",
+    "deepsearch"
+  ],
   "author": "",
   "license": "ISC",
   "dependencies": {
@@ -23,6 +28,7 @@
     "bullmq": "^5.51.1",
     "cors": "^2.8.5",
     "dotenv": "^16.5.0",
+    "ejs": "^3.1.10",
     "express": "^5.1.0",
     "html-pdf-node": "^1.0.8",
     "node-cache": "^5.1.2",
@@ -30,12 +36,13 @@
     "pdfkit": "^0.17.0",
     "puppeteer": "^24.7.2",
     "redis": "^4.7.0",
-    "ts-node": "^10.9.2",
-    "typescript": "^5.8.3",
     "uuid": "^11.1.0"
   },
   "devDependencies": {
+    "@types/cors": "^2.8.17",
     "@types/uuid": "^10.0.0",
-    "tsconfig-paths": "^4.2.0"
+    "ts-node": "^10.9.2",
+    "tsconfig-paths": "^4.2.0",
+    "typescript": "^5.8.3"
   }
 }

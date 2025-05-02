@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Configuración de Precios - Owl Fence Estimator</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      margin: 0;
+      padding: 20px;
+      color: #333;
+      background-color: #f8f9fa;
+    }
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+    h1 {
+      color: #2c3e50;
+      border-bottom: 2px solid #3498db;
+      padding-bottom: 10px;
+    }
+    .card {
+      background: white;
+      border-radius: 8px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+      padding: 20px;
+      margin-bottom: 20px;
+    }
+    .price-config {
+      margin-top: 20px;
+    }
+    .price-form {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: 20px;
+      margin-top: 20px;
+    }
+    .form-group {
+      margin-bottom: 15px;
+    }
+    label {
+      display: block;
+      margin-bottom: 5px;
+      font-weight: 500;
+    }
+    select, input {
+      width: 100%;
+      padding: 8px 10px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      font-size: 16px;
+    }
+    button {
+      background-color: #3498db;
+      color: white;
+      border: none;
+      padding: 10px 15px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 16px;
+      transition: background-color 0.2s;
+    }
+    button:hover {
+      background-color: #2980b9;
+    }
+    .price-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 20px;
+    }
+    .price-table th, .price-table td {
+      border: 1px solid #ddd;
+      padding: 12px;
+      text-align: left;
+    }
+    .price-table th {
+      background-color: #f2f2f2;
+    }
+    .price-table tr:hover {
+      background-color: #f5f5f5;
+    }
+    .info-box {
+      background-color: #e1f5fe;
+      border-left: 4px solid #03a9f4;
+      padding: 15px;
+      margin-bottom: 20px;
+      border-radius: 4px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Configuración de Precios por Pie Lineal</h1>
+    
+    <div class="info-box">
+      <p><strong>Información importante:</strong> En esta página puedes ajustar los precios por pie lineal que el sistema utilizará para calcular los estimados. El motor DeepSearch investigará automáticamente los precios, pero tú siempre puedes ajustarlos según tu experiencia y conocimiento del mercado local.</p>
+    </div>
+    
+    <div class="card">
+      <h2>Ajustar Precios</h2>
+      
+      <div class="price-form">
+        <div>
+          <div class="form-group">
+            <label for="region">Región</label>
+            <select id="region">
+              <option value="california">California</option>
+              <option value="texas">Texas</option>
+              <option value="florida">Florida</option>
+              <option value="default">Otra región (por defecto)</option>
+            </select>
+          </div>
+          
+          <div class="form-group">
+            <label for="projectType">Tipo de Proyecto</label>
+            <select id="projectType">
+              <option value="fencing">Cercas y Vallas</option>
+              <option value="decking">Terrazas</option>
+              <option value="concrete">Concreto</option>
+            </select>
+          </div>
+          
+          <div class="form-group">
+            <label for="subType">Subtipo</label>
+            <select id="subType">
+              <option value="wood">Madera</option>
+              <option value="vinyl">Vinilo</option>
+              <option value="chain-link">Chain Link</option>
+              <option value="aluminum">Aluminio</option>
+              <option value="iron">Hierro</option>
+            </select>
+          </div>
+        </div>
+        
+        <div>
+          <div class="form-group">
+            <label for="withGatesPrice">Precio por Pie Lineal (con puertas)</label>
+            <input type="number" id="withGatesPrice" min="1" step="0.01" placeholder="Ej: 65.00">
+          </div>
+          
+          <div class="form-group">
+            <label for="withoutGatesPrice">Precio por Pie Lineal (sin puertas)</label>
+            <input type="number" id="withoutGatesPrice" min="1" step="0.01" placeholder="Ej: 60.00">
+          </div>
+          
+          <div class="form-group" style="margin-top: 30px;">
+            <button id="updatePrices">Actualizar Precios</button>
+            <button id="resetDefault" style="background-color: #e74c3c; margin-left: 10px;">Restablecer por Defecto</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <div class="card">
+      <h2>Precios Actuales</h2>
+      <p>A continuación se muestran los precios actuales configurados en el sistema:</p>
+      
+      <table class="price-table">
+        <thead>
+          <tr>
+            <th>Región</th>
+            <th>Tipo de Proyecto</th>
+            <th>Subtipo</th>
+            <th>Con Puertas ($/pie)</th>
+            <th>Sin Puertas ($/pie)</th>
+          </tr>
+        </thead>
+        <tbody id="priceTable">
+          <!-- Se llenará con JavaScript -->
+        </tbody>
+      </table>
+    </div>
+  </div>
+  
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      // Cargar precios al iniciar
+      loadPrices();
+      
+      // Event listeners
+      document.getElementById('region').addEventListener('change', updateSubtypeOptions);
+      document.getElementById('projectType').addEventListener('change', updateSubtypeOptions);
+      document.getElementById('updatePrices').addEventListener('click', updatePrices);
+      document.getElementById('resetDefault').addEventListener('click', resetToDefault);
+      
+      // Actualizar opciones de subtipo según tipo de proyecto
+      function updateSubtypeOptions() {
+        const projectType = document.getElementById('projectType').value;
+        const subtypeSelect = document.getElementById('subType');
+        
+        // Limpiar opciones actuales
+        subtypeSelect.innerHTML = '';
+        
+        // Añadir opciones según tipo de proyecto
+        if (projectType === 'fencing') {
+          addOption(subtypeSelect, 'wood', 'Madera');
+          addOption(subtypeSelect, 'vinyl', 'Vinilo');
+          addOption(subtypeSelect, 'chain-link', 'Chain Link');
+          addOption(subtypeSelect, 'aluminum', 'Aluminio');
+          addOption(subtypeSelect, 'iron', 'Hierro');
+        } else if (projectType === 'decking') {
+          addOption(subtypeSelect, 'wood', 'Madera');
+          addOption(subtypeSelect, 'composite', 'Compuesto');
+          addOption(subtypeSelect, 'pvc', 'PVC');
+        } else if (projectType === 'concrete') {
+          addOption(subtypeSelect, 'patio', 'Patio');
+          addOption(subtypeSelect, 'driveway', 'Entrada');
+          addOption(subtypeSelect, 'walkway', 'Pasillo');
+        }
+        
+        // Cargar precios actuales para la selección
+        loadCurrentPrices();
+      }
+      
+      function addOption(select, value, text) {
+        const option = document.createElement('option');
+        option.value = value;
+        option.textContent = text;
+        select.appendChild(option);
+      }
+      
+      // Cargar todos los precios
+      async function loadPrices() {
+        try {
+          const response = await fetch('/api/deepsearch/prices');
+          if (!response.ok) throw new Error('Error cargando precios');
+          
+          const priceData = await response.json();
+          displayPricesTable(priceData);
+          
+          // También cargar precios actuales para la selección
+          loadCurrentPrices();
+        } catch (error) {
+          console.error('Error:', error);
+          alert('No se pudieron cargar los precios. Por favor intenta de nuevo.');
+        }
+      }
+      
+      // Cargar precios para la selección actual
+      async function loadCurrentPrices() {
+        const region = document.getElementById('region').value;
+        const projectType = document.getElementById('projectType').value;
+        const subType = document.getElementById('subType').value;
+        
+        try {
+          const response = await fetch(`/api/deepsearch/prices?region=${region}`);
+          if (!response.ok) throw new Error('Error cargando precios');
+          
+          const priceData = await response.json();
+          
+          // Mostrar precios actuales en los campos
+          if (priceData[projectType] && priceData[projectType][subType]) {
+            const prices = priceData[projectType][subType];
+            document.getElementById('withGatesPrice').value = prices.withGates || '';
+            document.getElementById('withoutGatesPrice').value = prices.withoutGates || '';
+          } else {
+            // Limpiar campos si no hay datos
+            document.getElementById('withGatesPrice').value = '';
+            document.getElementById('withoutGatesPrice').value = '';
+          }
+        } catch (error) {
+          console.error('Error:', error);
+        }
+      }
+      
+      // Actualizar precios
+      async function updatePrices() {
+        const region = document.getElementById('region').value;
+        const projectType = document.getElementById('projectType').value;
+        const subType = document.getElementById('subType').value;
+        const withGates = document.getElementById('withGatesPrice').value;
+        const withoutGates = document.getElementById('withoutGatesPrice').value;
+        
+        if (!withGates && !withoutGates) {
+          alert('Por favor ingresa al menos un precio para actualizar.');
+          return;
+        }
+        
+        try {
+          const response = await fetch('/api/deepsearch/prices', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              region,
+              projectType,
+              subType,
+              withGates,
+              withoutGates
+            })
+          });
+          
+          if (!response.ok) throw new Error('Error actualizando precios');
+          
+          const result = await response.json();
+          alert('Precios actualizados correctamente');
+          
+          // Recargar precios para mostrar los cambios
+          loadPrices();
+        } catch (error) {
+          console.error('Error:', error);
+          alert('Error al actualizar precios. Por favor intenta de nuevo.');
+        }
+      }
+      
+      // Restablecer precios por defecto
+      function resetToDefault() {
+        if (confirm('¿Estás seguro que deseas restablecer a los precios por defecto?')) {
+          // Valores por defecto según el tipo
+          const region = document.getElementById('region').value;
+          const projectType = document.getElementById('projectType').value;
+          const subType = document.getElementById('subType').value;
+          
+          let defaultWithGates = 0;
+          let defaultWithoutGates = 0;
+          
+          // Asignar valores por defecto según el tipo
+          if (projectType === 'fencing') {
+            if (subType === 'wood') {
+              defaultWithGates = 65;
+              defaultWithoutGates = 60;
+            } else if (subType === 'vinyl') {
+              defaultWithGates = 70;
+              defaultWithoutGates = 65;
+            } else if (subType === 'chain-link') {
+              defaultWithGates = 40;
+              defaultWithoutGates = 35;
+            } else if (subType === 'aluminum') {
+              defaultWithGates = 80;
+              defaultWithoutGates = 75;
+            } else if (subType === 'iron') {
+              defaultWithGates = 120;
+              defaultWithoutGates = 110;
+            }
+          }
+          
+          // Actualizar campos
+          document.getElementById('withGatesPrice').value = defaultWithGates;
+          document.getElementById('withoutGatesPrice').value = defaultWithoutGates;
+          
+          // Llamar a actualizar
+          updatePrices();
+        }
+      }
+      
+      // Mostrar tabla de precios
+      function displayPricesTable(priceData) {
+        const tableBody = document.getElementById('priceTable');
+        tableBody.innerHTML = '';
+        
+        // Recorrer regiones
+        for (const region in priceData) {
+          const regionData = priceData[region];
+          
+          // Recorrer tipos de proyecto
+          for (const projectType in regionData) {
+            const projectData = regionData[projectType];
+            
+            // Recorrer subtipos
+            for (const subType in projectData) {
+              const priceInfo = projectData[subType];
+              
+              // Crear fila
+              const row = document.createElement('tr');
+              
+              // Añadir celdas
+              row.innerHTML = `
+                <td>${formatRegionName(region)}</td>
+                <td>${formatProjectType(projectType)}</td>
+                <td>${formatSubType(subType)}</td>
+                <td>${formatPrice(priceInfo.withGates)}</td>
+                <td>${formatPrice(priceInfo.withoutGates)}</td>
+              `;
+              
+              tableBody.appendChild(row);
+            }
+          }
+        }
+      }
+      
+      // Formatear nombres para mostrar
+      function formatRegionName(region) {
+        const regionNames = {
+          'california': 'California',
+          'texas': 'Texas',
+          'florida': 'Florida',
+          'default': 'Otras regiones'
+        };
+        return regionNames[region] || region;
+      }
+      
+      function formatProjectType(type) {
+        const projectNames = {
+          'fencing': 'Cercas y Vallas',
+          'decking': 'Terrazas',
+          'concrete': 'Concreto'
+        };
+        return projectNames[type] || type;
+      }
+      
+      function formatSubType(type) {
+        const subtypeNames = {
+          'wood': 'Madera',
+          'vinyl': 'Vinilo',
+          'chain-link': 'Chain Link',
+          'aluminum': 'Aluminio',
+          'iron': 'Hierro',
+          'composite': 'Compuesto',
+          'pvc': 'PVC',
+          'patio': 'Patio',
+          'driveway': 'Entrada',
+          'walkway': 'Pasillo'
+        };
+        return subtypeNames[type] || type;
+      }
+      
+      function formatPrice(price) {
+        return price ? `$${parseFloat(price).toFixed(2)}` : '-';
+      }
+    });
+  </script>
+</body>
+</html>

@@ -1,92 +1,75 @@
 // filepath: /workspaces/owl-fenc-flowchart/backend/src/services/construction-method-cache.service.ts
-import { ConstructionMethodCache, ConstructionMethodResult, ClimateType, SoilType } from '../interfaces/construction-methods.interfaces';
-import { FenceType } from '../interfaces/fence.interfaces';
 
 /**
  * Servicio de caché para métodos de construcción
- * Almacena temporalmente los métodos de construcción para evitar consultas repetitivas
+ * Permite almacenar y recuperar métodos de construcción para evitar recalcularlos
  */
-export class ConstructionMethodCacheService implements ConstructionMethodCache {
-  private cache: Map<string, {
-    data: ConstructionMethodResult,
-    timestamp: number
-  }> = new Map();
+export class ConstructionMethodCacheService {
+  private cache: Map<string, any>;
+  private readonly defaultTTL: number; // Tiempo de vida en segundos
   
-  // Tiempo de vida de la caché: 30 días en milisegundos
-  private readonly CACHE_TTL = 30 * 24 * 60 * 60 * 1000;
-  
-  /**
-   * Construye una clave única para el caché
-   */
-  private buildKey(fenceType: FenceType, soilType: SoilType, climate: ClimateType): string {
-    return `${fenceType.toLowerCase()}_${soilType.toLowerCase()}_${climate.toLowerCase()}`;
+  constructor(defaultTTL = 86400) { // 24 horas por defecto
+    this.cache = new Map();
+    this.defaultTTL = defaultTTL;
   }
   
   /**
-   * Obtiene un método de construcción desde la caché
+   * Obtiene un método de construcción almacenado en caché
    */
-  getMethod(
-    fenceType: FenceType, 
-    soilType: SoilType,
-    climate: ClimateType
-  ): ConstructionMethodResult | null {
-    const key = this.buildKey(fenceType, soilType, climate);
-    const cachedItem = this.cache.get(key);
+  get(key: string): any {
+    const item = this.cache.get(key);
     
-    if (!cachedItem) {
-      return null;
-    }
+    if (!item) return null;
     
-    // Verificar si el caché está vigente
-    const now = Date.now();
-    if (now - cachedItem.timestamp > this.CACHE_TTL) {
+    // Verificar si el item ha expirado
+    if (item.expiry && item.expiry < Date.now()) {
       this.cache.delete(key);
       return null;
     }
     
-    return cachedItem.data;
+    return item.value;
   }
   
   /**
-   * Guarda un método de construcción en la caché
+   * Almacena un método de construcción en caché
    */
-  setMethod(
-    fenceType: FenceType, 
-    soilType: SoilType,
-    climate: ClimateType,
-    method: ConstructionMethodResult
-  ): void {
-    const key = this.buildKey(fenceType, soilType, climate);
+  set(key: string, value: any, ttl?: number): void {
+    const expiry = ttl ? Date.now() + ttl * 1000 : Date.now() + this.defaultTTL * 1000;
     
     this.cache.set(key, {
-      data: method,
-      timestamp: Date.now()
+      value,
+      expiry
     });
   }
   
   /**
-   * Invalida una entrada específica en la caché
+   * Elimina un método de construcción de la caché
    */
-  invalidate(fenceType: FenceType, soilType: SoilType, climate: ClimateType): void {
-    const key = this.buildKey(fenceType, soilType, climate);
-    this.cache.delete(key);
+  delete(key: string): boolean {
+    return this.cache.delete(key);
   }
   
   /**
-   * Invalida entradas más antiguas que cierta cantidad de días
-   * @returns Número de entradas eliminadas
+   * Limpia toda la caché
    */
-  invalidateOlderThan(days: number): number {
-    const threshold = Date.now() - (days * 24 * 60 * 60 * 1000);
-    let count = 0;
+  clear(): void {
+    this.cache.clear();
+  }
+  
+  /**
+   * Elimina entradas expiradas de la caché
+   */
+  purgeExpired(): number {
+    let purged = 0;
+    const now = Date.now();
     
-    this.cache.forEach((value, key) => {
-      if (value.timestamp < threshold) {
+    for (const [key, item] of this.cache.entries()) {
+      if (item.expiry && item.expiry < now) {
         this.cache.delete(key);
-        count++;
+        purged++;
       }
-    });
+    }
     
-    return count;
+    return purged;
   }
 }

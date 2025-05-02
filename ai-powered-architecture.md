@@ -128,14 +128,13 @@ graph TD
 ## Plan de Implementación Ágil
 
 ### Fase 1: MVP Enfocado (4-6 semanas)
-- Desarrollar motor básico para industria de cercas (fencing)
-- Implementar generación de estimados para 3-5 tipos más comunes
+- Desarrollar motor DeepSearch unificado con capacidad para analizar proyectos de cercas (fencing)
+- Implementar generación de estimados para los 3-5 tipos de cercas más comunes usando un único motor de IA
 - Crear interfaz mínima funcional con flujo completo
 
 ### Fase 2: Expansión y Optimización (6-8 semanas)
-- Expandir a 2-3 industrias adicionales (roofing, flooring)
-- Implementar sistema de aprendizaje y retroalimentación
-- Optimizar precisión y tiempos de respuesta
+- Expandir el motor DeepSearch para soportar 2-3 industrias adicionales (roofing, flooring) sin crear motores separados
+- Implementar sistema de aprendizaje y retroalimentación para mejorar precisión del motor unificado
 
 ### Fase 3: Escalabilidad y Mercado (8-12 semanas)
 - Arquitectura distribuida para soportar alta demanda

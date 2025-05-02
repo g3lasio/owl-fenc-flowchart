@@ -1,6 +1,8 @@
 import axios from 'axios';
 import * as cheerio from 'cheerio';
 import { CacheService } from './cache.service';
+import { OpenAIClient } from './openai.client';
+import { RequiredMaterial, Location } from '../interfaces/fence.interfaces';
 
 interface PriceResult {
   available: boolean;
@@ -20,7 +22,8 @@ export class PriceResearchService {
   
   constructor(
     private readonly enableAI: boolean = true,
-    private readonly cacheTTLSeconds: number = 86400 // 24 horas por defecto
+    private readonly cacheTTLSeconds: number = 86400, // 24 horas por defecto
+    private readonly openAIClient?: OpenAIClient
   ) {
     this.cacheService = new CacheService();
   }
@@ -68,7 +71,7 @@ export class PriceResearchService {
       }
       
       // 3. Si está habilitada la IA, usar búsqueda inteligente
-      if (this.enableAI) {
+      if (this.enableAI && this.openAIClient) {
         const aiResult = await this.searchWithAI(materialId, location);
         
         if (aiResult.available) {
@@ -207,6 +210,148 @@ export class PriceResearchService {
       source: 'ai:not_implemented',
       confidence: 0
     };
+  }
+  
+  /**
+   * Investiga precios actualizados para una lista de materiales en una ubicación específica
+   */
+  async researchPricesWithAI(
+    materials: RequiredMaterial[],
+    location: Location
+  ): Promise<RequiredMaterial[]> {
+    console.log(`Iniciando investigación de precios para ${materials.length} materiales en ${location.city}, ${location.state}`);
+    
+    // Agrupar materiales en lotes de máximo 10 para no sobrecargar el modelo
+    const materialChunks = this.chunkArray(materials, 10);
+    const pricedMaterials: RequiredMaterial[] = [];
+    
+    for (const chunk of materialChunks) {
+      const pricePrompt = this.buildPriceResearchPrompt(chunk, location);
+      
+      try {
+        const priceResponse = await this.openAIClient!.complete({
+          prompt: pricePrompt,
+          maxTokens: 2000
+        });
+        
+        const chunkPrices = this.parsePriceResponse(priceResponse, chunk);
+        pricedMaterials.push(...chunkPrices);
+      } catch (error) {
+        console.error('Error investigando precios para lote de materiales:', error);
+        
+        // Si falla, usar precios de respaldo
+        const fallbackPrices = chunk.map(material => ({
+          ...material,
+          unitPrice: material.fallbackPrice || 0,
+          priceSource: 'fallback'
+        }));
+        
+        pricedMaterials.push(...fallbackPrices);
+      }
+    }
+    
+    return pricedMaterials;
+  }
+  
+  /**
+   * Construye un prompt detallado para investigación precisa de precios
+   */
+  private buildPriceResearchPrompt(materials: RequiredMaterial[], location: Location): string {
+    const materialsList = materials.map((m, idx) => 
+      `${idx + 1}. ${m.name} (${m.unit}): ${m.description || ''}${m.alternativeMaterials ? ' - Alternativas: ' + m.alternativeMaterials.join(', ') : ''}`
+    ).join('\n');
+    
+    return `
+      Como experto en la industria de construcción y materiales de construcción, necesito información precisa
+      sobre precios actuales de los siguientes materiales en la zona de ${location.city}, ${location.state}, 
+      código postal ${location.zipCode} a fecha de hoy:
+      
+      ${materialsList}
+      
+      Por favor, proporciona los precios unitarios para cada uno basándote en:
+      - Precios de grandes almacenes (Home Depot, Lowe's, etc.)
+      - Distribuidores especializados en la zona
+      - Precios promedio para contratistas (con descuentos típicos)
+      
+      Para cada material, proporciona:
+      - El precio unitario más preciso y actualizado
+      - La fuente o tienda recomendada para comprarlo
+      - Notas sobre disponibilidad, descuentos por volumen, o variaciones de precio
+      
+      Presenta tu investigación como un array JSON donde cada objeto tenga el id del material 
+      y el precio unitario investigado. Asegúrate de investigar precios realistas y precisos
+      según el mercado actual en esa ubicación específica.
+      
+      Ejemplo de formato de respuesta:
+      [
+        {"id": "id-del-material", "unitPrice": 24.99, "source": "Home Depot", "notes": "Disponible en tienda"},
+        ...
+      ]
+    `;
+  }
+  
+  /**
+   * Parsea la respuesta del modelo de IA con los precios
+   */
+  private parsePriceResponse(response: string, originalMaterials: RequiredMaterial[]): RequiredMaterial[] {
+    try {
+      // Extraer el array JSON de la respuesta
+      const jsonMatch = response.match(/\[\s*\{[\s\S]*?\}\s*\]/);
+      if (!jsonMatch) {
+        throw new Error('No se encontró una estructura JSON válida en la respuesta de precios');
+      }
+      
+      const pricesJson = jsonMatch[0];
+      const pricesData = JSON.parse(pricesJson) as Array<{
+        id: string;
+        unitPrice: number;
+        source?: string;
+        notes?: string;
+      }>;
+      
+      // Combinar los precios investigados con los materiales originales
+      return originalMaterials.map(material => {
+        const priceData = pricesData.find(p => p.id === material.id);
+        
+        if (priceData) {
+          return {
+            ...material,
+            unitPrice: priceData.unitPrice,
+            priceSource: priceData.source || 'IA research',
+            priceNotes: priceData.notes
+          };
+        } else {
+          // Si no se encontró precio, usar el precio de fallback
+          return {
+            ...material,
+            unitPrice: material.fallbackPrice || 0,
+            priceSource: 'fallback',
+            priceNotes: 'Precio de respaldo usado por falta de información actualizada'
+          };
+        }
+      });
+    } catch (error) {
+      console.error('Error al parsear respuesta de precios:', error);
+      
+      // En caso de error, devolver los materiales con precios de fallback
+      return originalMaterials.map(material => ({
+        ...material,
+        unitPrice: material.fallbackPrice || 0,
+        priceSource: 'fallback',
+        priceNotes: 'Error al parsear respuesta de investigación de precios'
+      }));
+    }
+  }
+  
+  /**
+   * Divide un array en chunks de tamaño máximo especificado
+   */
+  private chunkArray<T>(array: T[], chunkSize: number): T[][] {
+    const chunks: T[][] = [];
+    for (let i = 0; i < array.length; i += chunkSize) {
+      chunks.push(array.slice(i, i + chunkSize));
+    }
+    return chunks;
   }
   
   /**

@@ -1,6 +1,6 @@
 import axios, { AxiosInstance } from 'axios';
 import { PriceAPIClient, PriceResult } from '../interfaces/calculators.interfaces';
-import { Location } from '../interfaces/fence.interfaces';
+import { Location, RequiredMaterial } from '../interfaces/fence.interfaces';
 
 /**
  * Cliente API genérico para obtener precios de materiales
@@ -151,5 +151,76 @@ export class MockPriceAPIClient implements PriceAPIClient {
       available: false,
       source: this.source
     };
+  }
+}
+
+/**
+ * Servicio para obtener precios de materiales de construcción desde APIs externas
+ */
+export class PriceApiService {
+  /**
+   * Obtiene precios para una lista de materiales desde APIs externas
+   */
+  async getPrices(materials: RequiredMaterial[], location: Location): Promise<RequiredMaterial[]> {
+    // En un entorno real, este método se conectaría a APIs de proveedores
+    // como Home Depot, Lowe's, etc., para obtener precios actualizados.
+    
+    // Para propósitos de demostración, simulamos los precios
+    return Promise.resolve(
+      materials.map(material => ({
+        ...material,
+        unitPrice: material.fallbackPrice || this.getSimulatedPrice(material, location),
+        priceSource: 'API Simulada'
+      }))
+    );
+  }
+  
+  /**
+   * Simula un precio para un material basado en datos ficticios
+   */
+  private getSimulatedPrice(material: RequiredMaterial, location: Location): number {
+    // Factores base por tipo de unidad
+    const baseUnitPrices: Record<string, number> = {
+      'each': 25.99,
+      'foot': 4.99,
+      'sq_ft': 3.49,
+      'board': 22.99,
+      'cubic_yard': 125.99,
+      'cubic_foot': 12.99,
+      'bag': 8.99,
+      'gallon': 29.99,
+      'pound': 1.99,
+      'box': 19.99,
+      'kit': 45.99
+    };
+    
+    // Factor de ajuste regional basado en código postal
+    const zipCode = parseInt(location.zipCode.substring(0, 1), 10);
+    const regionFactor = 0.9 + (zipCode / 10 * 0.1); // Ajuste simple basado en la primera cifra del ZIP
+    
+    // Obtenemos el precio base para la unidad, o un valor predeterminado si no existe
+    const basePrice = baseUnitPrices[material.unit] || 15.99;
+    
+    // Calculamos un precio simulado aplicando factores varios
+    let price = basePrice * regionFactor;
+    
+    // Ajuste por categoría de material (si existe)
+    if (material.category) {
+      const categoryFactors: Record<string, number> = {
+        'structural': 1.2,
+        'finish': 1.1,
+        'fastener': 0.9,
+        'tool': 1.3,
+        'decoration': 1.5
+      };
+      
+      price *= categoryFactors[material.category] || 1;
+    }
+    
+    // Aplicar una variación aleatoria pequeña
+    const randomVariation = 0.9 + (Math.random() * 0.2); // Entre 0.9 y 1.1
+    price *= randomVariation;
+    
+    return parseFloat(price.toFixed(2));
   }
 }
