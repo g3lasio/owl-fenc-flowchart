@@ -1,13 +1,27 @@
 import { PriceApiService } from '../../services/price-api.service';
 import { RequiredMaterial, RequiredService, FenceDimensions, FenceOptions, Location } from '../../interfaces/fence.interfaces';
 import { config } from '../../config/config';
+import { OpenAIClient } from '../../services/openai.client';
+import { AnthropicClient } from '../../services/anthropic.client';
 
 /**
  * Helper class for calculating materials needed for different project types
  * Extracts material calculation logic from DeepSearchEngine
  */
 export class MaterialCalculator {
-  constructor(private readonly priceApiService: PriceApiService) {}
+  private openAIClient: OpenAIClient | null;
+  private anthropicClient: AnthropicClient | null;
+  private materialCache: Map<string, {materials: RequiredMaterial[], services: RequiredService[]}>;
+
+  constructor(
+    private readonly priceApiService: PriceApiService,
+    openAIClient?: OpenAIClient,
+    anthropicClient?: AnthropicClient
+  ) {
+    this.openAIClient = openAIClient || null;
+    this.anthropicClient = anthropicClient || null;
+    this.materialCache = new Map();
+  }
 
   /**
    * Calculate materials and services needed for a project
@@ -19,212 +33,300 @@ export class MaterialCalculator {
     options: any,
     location: Location
   ): Promise<{materials: RequiredMaterial[], services: RequiredService[]}> {
+    // Create cache key for this specific calculation
+    const cacheKey = this.createCacheKey(projectType, projectSubtype, dimensions, options);
+    
+    // Check if we have cached results
+    const cachedResult = this.materialCache.get(cacheKey);
+    if (cachedResult) {
+      console.log(`Using cached materials and services for ${projectType} - ${projectSubtype}`);
+      return cachedResult;
+    }
+    
     // Different calculation strategies based on project type
-    switch (projectType.toLowerCase()) {
-      case 'fence':
-        return this.calculateFenceMaterialsAndServices(projectSubtype, dimensions, options, location);
-      case 'deck':
-        return this.calculateDeckMaterialsAndServices(projectSubtype, dimensions, options, location);
-      case 'pergola':
-        return this.calculatePergolaMaterialsAndServices(projectSubtype, dimensions, options, location);
-      default:
-        throw new Error(`Unsupported project type: ${projectType}`);
+    try {
+      let result;
+      
+      switch (projectType.toLowerCase()) {
+        case 'fence':
+          result = await this.calculateFenceMaterialsAndServices(projectSubtype, dimensions, options, location);
+          break;
+        case 'deck':
+          result = await this.calculateDeckMaterialsAndServices(projectSubtype, dimensions, options, location);
+          break;
+        case 'pergola':
+          result = await this.calculatePergolaMaterialsAndServices(projectSubtype, dimensions, options, location);
+          break;
+        case 'roof':
+        case 'roofing':
+          result = await this.calculateRoofMaterialsAndServices(projectSubtype, dimensions, options, location);
+          break;
+        default:
+          // For any other project type, use dynamic AI-based investigation
+          if (!this.canUseAIResearch()) {
+            throw new Error(`Unsupported project type: ${projectType} - No AI clients configured for research`);
+          }
+          
+          console.log(`Using AI research for unknown project type: ${projectType} - ${projectSubtype}`);
+          result = await this.researchProjectMaterialsAndServices(
+            projectType, 
+            projectSubtype, 
+            dimensions, 
+            options, 
+            location
+          );
+      }
+      
+      // Cache the result
+      this.materialCache.set(cacheKey, result);
+      return result;
+      
+    } catch (error) {
+      console.error(`Error calculating materials for ${projectType} - ${projectSubtype}:`, error);
+      throw error;
     }
   }
 
   /**
-   * Calculate fence-specific materials and services
+   * Check if AI research capability is available
    */
-  private async calculateFenceMaterialsAndServices(
-    fenceType: string,
-    dimensions: FenceDimensions,
-    options: FenceOptions,
-    location: Location
-  ): Promise<{materials: RequiredMaterial[], services: RequiredService[]}> {
-    const materials: RequiredMaterial[] = [];
-    const services: RequiredService[] = [];
-    
-    // Calculate linear feet
-    const linearFeet = this.calculateLinearFeet(dimensions);
-    
-    // Basic fence components based on type
-    switch (fenceType.toLowerCase()) {
-      case 'wood':
-        this.addWoodFenceMaterials(materials, dimensions, options, linearFeet);
-        break;
-      case 'vinyl':
-        this.addVinylFenceMaterials(materials, dimensions, options, linearFeet);
-        break;
-      case 'chain link':
-        this.addChainLinkFenceMaterials(materials, dimensions, options, linearFeet);
-        break;
-      case 'aluminum':
-      case 'metal':
-        this.addMetalFenceMaterials(materials, dimensions, options, linearFeet);
-        break;
-      default:
-        throw new Error(`Unsupported fence type: ${fenceType}`);
-    }
-    
-    // Add standard services
-    this.addStandardFenceServices(services, dimensions, options, linearFeet, fenceType);
-    
-    // Add optional features
-    if (options.gates && options.gates.length > 0) {
-      this.addGateMaterialsAndServices(materials, services, options.gates, fenceType);
-    }
-    
-    // Handle post installation based on ground type
-    this.addPostInstallationServices(services, dimensions, options, location);
-    
-    return { materials, services };
+  private canUseAIResearch(): boolean {
+    return !!(this.openAIClient || this.anthropicClient);
   }
-
+  
   /**
-   * Calculate deck-specific materials and services
+   * Create a unique cache key for a calculation
    */
-  private async calculateDeckMaterialsAndServices(
-    deckType: string,
+  private createCacheKey(
+    projectType: string, 
+    projectSubtype: string, 
+    dimensions: any, 
+    options: any
+  ): string {
+    return `${projectType}|${projectSubtype}|${JSON.stringify(dimensions)}|${JSON.stringify(options)}`;
+  }
+  
+  /**
+   * Research materials and services dynamically using AI for any project type
+   * This allows the system to handle construction project types that weren't 
+   * explicitly coded
+   */
+  private async researchProjectMaterialsAndServices(
+    projectType: string,
+    projectSubtype: string,
     dimensions: any,
     options: any,
     location: Location
   ): Promise<{materials: RequiredMaterial[], services: RequiredService[]}> {
-    // Deck calculations implementation
-    const materials: RequiredMaterial[] = [];
-    const services: RequiredService[] = [];
+    console.log(`Researching materials and services for ${projectType} - ${projectSubtype}...`);
     
-    // Calculate square footage
-    const squareFeet = dimensions.width * dimensions.length;
-    
-    // Add deck-specific materials and services based on type
-    // Implementation would go here
-
-    return { materials, services };
+    try {
+      // Try with Anthropic first due to better researching capabilities
+      if (this.anthropicClient) {
+        return await this.anthropicResearchProject(projectType, projectSubtype, dimensions, options, location);
+      }
+      
+      // Fall back to OpenAI if Anthropic not available
+      if (this.openAIClient) {
+        return await this.openaiResearchProject(projectType, projectSubtype, dimensions, options, location);
+      }
+      
+      throw new Error('No AI service available for project research');
+    } catch (error) {
+      console.error('Error during AI research:', error);
+      
+      // If we fail with one service, try the other as fallback
+      if (error.message.includes('Anthropic') && this.openAIClient) {
+        console.log('Falling back to OpenAI for research');
+        return await this.openaiResearchProject(projectType, projectSubtype, dimensions, options, location);
+      }
+      
+      if (error.message.includes('OpenAI') && this.anthropicClient) {
+        console.log('Falling back to Anthropic for research');
+        return await this.anthropicResearchProject(projectType, projectSubtype, dimensions, options, location);
+      }
+      
+      throw error;
+    }
   }
-
+  
   /**
-   * Calculate pergola-specific materials and services
+   * Research project materials and services using Anthropic's Claude
    */
-  private async calculatePergolaMaterialsAndServices(
-    pergolaType: string,
+  private async anthropicResearchProject(
+    projectType: string,
+    projectSubtype: string,
     dimensions: any,
     options: any,
     location: Location
   ): Promise<{materials: RequiredMaterial[], services: RequiredService[]}> {
-    // Pergola calculations implementation
-    const materials: RequiredMaterial[] = [];
-    const services: RequiredService[] = [];
+    if (!this.anthropicClient) {
+      throw new Error('Anthropic client not configured');
+    }
     
-    // Implementation would go here
-
-    return { materials, services };
+    const prompt = this.createResearchPrompt(projectType, projectSubtype, dimensions, options, location);
+    
+    try {
+      const response = await this.anthropicClient.complete({
+        prompt,
+        maxTokensToSample: 4000,
+        model: 'claude-3-opus-20240229' // Use the most capable model for research
+      });
+      
+      return this.parseAIResearchResponse(response);
+    } catch (error) {
+      console.error('Anthropic research error:', error);
+      throw new Error(`Anthropic research failed: ${error.message}`);
+    }
   }
-
+  
   /**
-   * Add wood fence specific materials
+   * Research project materials and services using OpenAI's GPT
    */
-  private addWoodFenceMaterials(
-    materials: RequiredMaterial[],
-    dimensions: FenceDimensions,
-    options: FenceOptions,
-    linearFeet: number
-  ): void {
-    // Calculate number of posts needed (posts at every 8 feet + corners + end caps)
-    const numPosts = Math.ceil(linearFeet / 8) + 1 + (dimensions.corners || 0);
+  private async openaiResearchProject(
+    projectType: string,
+    projectSubtype: string,
+    dimensions: any,
+    options: any,
+    location: Location
+  ): Promise<{materials: RequiredMaterial[], services: RequiredService[]}> {
+    if (!this.openAIClient) {
+      throw new Error('OpenAI client not configured');
+    }
     
-    // Add posts
-    materials.push({
-      name: options.postType || '4x4 Pressure Treated Posts',
-      quantity: numPosts,
-      unit: 'each',
-      length: dimensions.height + 2, // Extra 2 feet for ground embedding
-      description: `${dimensions.height + 2}' ${options.postType || 'Pressure Treated'} posts`
-    });
+    const prompt = this.createResearchPrompt(projectType, projectSubtype, dimensions, options, location);
     
-    // Add rails (typically 3 rails per section for 6ft fence)
-    const railsPerSection = dimensions.height >= 6 ? 3 : 2;
-    const numRails = Math.ceil(linearFeet / 8) * railsPerSection;
-    
-    materials.push({
-      name: options.railType || '2x4 Pressure Treated Rails',
-      quantity: numRails,
-      unit: 'each',
-      length: 8, // Standard 8' rails
-      description: `${options.railType || 'Pressure Treated'} horizontal rails`
-    });
-    
-    // Add pickets (1 picket per 6 inches)
-    const numPickets = Math.ceil(linearFeet * 2); // 2 pickets per foot
-    
-    materials.push({
-      name: options.picketType || '1x6 Pressure Treated Pickets',
-      quantity: numPickets,
-      unit: 'each',
-      length: dimensions.height,
-      description: `${dimensions.height}' ${options.picketType || 'Pressure Treated'} pickets`
-    });
-    
-    // Add concrete for post holes
-    materials.push({
-      name: 'Concrete Mix',
-      quantity: numPosts,
-      unit: 'bag',
-      description: 'Fast-setting concrete mix for post installation'
-    });
-    
-    // Add hardware
-    materials.push({
-      name: 'Galvanized Nails/Screws',
-      quantity: 1,
-      unit: 'box',
-      description: 'Fasteners for fence assembly'
-    });
+    try {
+      const response = await this.openAIClient.complete({
+        prompt,
+        maxTokens: 4000,
+        temperature: 0.1, // Keep temperature low for factual responses
+        model: 'gpt-4o' // Use the most capable model for research
+      });
+      
+      return this.parseAIResearchResponse(response);
+    } catch (error) {
+      console.error('OpenAI research error:', error);
+      throw new Error(`OpenAI research failed: ${error.message}`);
+    }
   }
-
-  // Additional methods for other fence types...
-
+  
   /**
-   * Add standard fence services
+   * Create a detailed research prompt to get materials and services for any construction project
    */
-  private addStandardFenceServices(
-    services: RequiredService[],
-    dimensions: FenceDimensions,
-    options: FenceOptions,
-    linearFeet: number,
-    fenceType: string
-  ): void {
-    // Layout and measurement service
-    services.push({
-      name: 'Site Layout and Measurement',
-      description: 'Marking fence line, post locations, and property boundaries',
-      hours: Math.max(2, linearFeet / 100), // Minimum 2 hours
-      equipmentNeeded: ['Measuring Tape', 'Marking Stakes', 'String Line']
-    });
+  private createResearchPrompt(
+    projectType: string,
+    projectSubtype: string,
+    dimensions: any,
+    options: any,
+    location: Location
+  ): string {
+    // Format dimensions and options for better readability in the prompt
+    const dimensionsStr = Object.entries(dimensions)
+      .map(([key, value]) => `${key}: ${value}`)
+      .join(', ');
     
-    // Post hole digging
-    const numPosts = Math.ceil(linearFeet / 8) + 1 + (dimensions.corners || 0);
-    services.push({
-      name: 'Post Hole Digging',
-      description: `Digging ${numPosts} post holes to proper depth`,
-      hours: numPosts * 0.25, // 15 minutes per hole
-      equipmentNeeded: ['Post Hole Digger', 'Auger']
-    });
+    const optionsStr = Object.entries(options)
+      .map(([key, value]) => `${key}: ${value}`)
+      .join(', ');
     
-    // Fence installation
-    services.push({
-      name: 'Fence Installation',
-      description: `Installing ${fenceType} fence sections, rails, and pickets`,
-      hours: linearFeet * 0.15, // 9 minutes per linear foot
-      equipmentNeeded: ['Power Drill', 'Circular Saw', 'Level', 'Nail Gun']
-    });
-    
-    // Clean up service
-    services.push({
-      name: 'Clean Up',
-      description: 'Removal of debris and final site clean up',
-      hours: Math.max(1, linearFeet / 200), // Minimum 1 hour
-      equipmentNeeded: ['Wheelbarrow', 'Rake']
-    });
+    return `
+I need a detailed analysis of materials and services required for a construction project with the following specifications:
+
+PROJECT TYPE: ${projectType}
+PROJECT SUBTYPE: ${projectSubtype}
+DIMENSIONS: ${dimensionsStr}
+OPTIONS: ${optionsStr}
+LOCATION: ${location.city || ''}, ${location.state || ''}, ${location.zipCode || ''}
+
+Please analyze this construction project and provide:
+
+1. A comprehensive list of materials needed, including:
+   - Material name
+   - Quantity required (with appropriate units)
+   - Brief description of each material's purpose
+
+2. A list of services required to complete this project, including:
+   - Service name
+   - Estimated hours required
+   - Equipment needed for each service
+   - Brief description of each service
+
+Please structure your response as a JSON object with two main arrays: "materials" and "services".
+Each material should have: name, quantity, unit, description
+Each service should have: name, hours, equipmentNeeded (array), description
+
+For quantities, please calculate based on the dimensions provided and include a small waste factor (typically 10-15%).
+For services/labor, please estimate realistic hours based on industry standards.
+
+Example format (but with complete data for this specific project):
+{
+  "materials": [
+    {
+      "name": "Material Name",
+      "quantity": 10,
+      "unit": "unit type (e.g., piece, sqft, board, etc.)",
+      "description": "Description of material and purpose"
+    }
+  ],
+  "services": [
+    {
+      "name": "Service Name",
+      "hours": 5,
+      "equipmentNeeded": ["Equipment 1", "Equipment 2"],
+      "description": "Description of service"
+    }
+  ]
+}
+
+Please be as specific and comprehensive as possible, considering all aspects of the ${projectType} project including foundation work, structural elements, finishing, and any special requirements implied by the project type and options.
+`;
+  }
+  
+  /**
+   * Parse the AI response and convert it to the expected format
+   */
+  private parseAIResearchResponse(response: string): {materials: RequiredMaterial[], services: RequiredService[]} {
+    try {
+      // Find JSON object in the response
+      const jsonMatch = response.match(/\{[\s\S]*\}/);
+      
+      if (!jsonMatch) {
+        throw new Error('No valid JSON found in AI response');
+      }
+      
+      const jsonStr = jsonMatch[0];
+      const parsedResponse = JSON.parse(jsonStr);
+      
+      // Validate the response structure
+      if (!parsedResponse.materials || !Array.isArray(parsedResponse.materials)) {
+        throw new Error('Invalid materials array in AI response');
+      }
+      
+      if (!parsedResponse.services || !Array.isArray(parsedResponse.services)) {
+        throw new Error('Invalid services array in AI response');
+      }
+      
+      // Convert to our interface types
+      const materials: RequiredMaterial[] = parsedResponse.materials.map((m: any) => ({
+        name: m.name,
+        quantity: m.quantity,
+        unit: m.unit,
+        description: m.description
+      }));
+      
+      const services: RequiredService[] = parsedResponse.services.map((s: any) => ({
+        name: s.name,
+        hours: s.hours,
+        equipmentNeeded: s.equipmentNeeded,
+        description: s.description
+      }));
+      
+      return { materials, services };
+    } catch (error) {
+      console.error('Error parsing AI research response:', error);
+      throw new Error(`Failed to parse AI research response: ${error.message}`);
+    }
   }
 
   /**

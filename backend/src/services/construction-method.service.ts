@@ -1,17 +1,79 @@
 import { AnthropicClient } from './anthropic.client';
+import { OpenAIClient } from './openai.client';
 import { ConstructionMethodCacheService } from './construction-method-cache.service';
 import { Location } from '../interfaces/fence.interfaces';
 
 /**
  * Servicio para determinar y recomendar métodos óptimos de construcción
  * basados en el tipo de proyecto, ubicación, y especificaciones
+ * Ahora compatible con cualquier tipo de proyecto de construcción
  */
 export class ConstructionMethodService {
+  private openAIClient: OpenAIClient | null;
+
   constructor(
     private readonly anthropicClient: AnthropicClient,
-    private readonly constructionMethodCache: ConstructionMethodCacheService
-  ) {}
-  
+    private readonly constructionMethodCache: ConstructionMethodCacheService,
+    openAIClient?: OpenAIClient
+  ) {
+    this.openAIClient = openAIClient || null;
+  }
+
+  /**
+   * Determina el método de construcción para cualquier tipo de proyecto
+   * Método principal para ser llamado desde el motor DeepSearch
+   */
+  async getConstructionMethod(
+    projectType: string,
+    projectSubtype: string,
+    dimensions: any,
+    options: any,
+    location: Location
+  ): Promise<string> {
+    try {
+      // Primero intentar obtener método detallado 
+      const detailedMethod = await this.getOptimalMethod(
+        projectType,
+        projectSubtype,
+        dimensions,
+        options,
+        location
+      );
+
+      // Convertir método detallado a texto descriptivo
+      return this.formatConstructionMethod(detailedMethod);
+    } catch (error) {
+      console.error('Error al obtener método de construcción:', error);
+
+      // Si falla, retornar método genérico como texto
+      const fallbackMethod = this.getFallbackConstructionMethod(projectType, projectSubtype);
+      return this.formatConstructionMethod(fallbackMethod);
+    }
+  }
+
+  /**
+   * Formatea un método de construcción como texto descriptivo
+   */
+  private formatConstructionMethod(method: any): string {
+    // Unir pasos en párrafos numerados
+    const formattedSteps = method.steps
+      .map((step: string, index: number) => `${index + 1}. ${step}`)
+      .join('\n');
+
+    // Formatear consideraciones especiales si existen
+    const specialConsiderationsText = method.specialConsiderations && method.specialConsiderations.length > 0
+      ? `\n\nConsideraciones especiales:\n• ${method.specialConsiderations.join('\n• ')}`
+      : '';
+
+    // Formatear advertencias si existen  
+    const warningsText = method.warnings && method.warnings.length > 0
+      ? `\n\nAdvertencias importantes:\n• ${method.warnings.join('\n• ')}`
+      : '';
+
+    // Combinar todo en un texto formateado
+    return `${method.description}\n\nPasos de construcción:\n${formattedSteps}${specialConsiderationsText}${warningsText}`;
+  }
+
   /**
    * Determina el método óptimo de construcción para un proyecto específico
    */
@@ -30,47 +92,139 @@ export class ConstructionMethodService {
     specialConsiderations: string[];
   }> {
     // Verificar en caché primero
-    const cacheKey = `${projectType}-${projectSubtype}-${location.state}`;
+    const cacheKey = `${projectType}-${projectSubtype}-${location.state || location.zipCode || 'unknown'}`;
     const cachedMethod = this.constructionMethodCache.get(cacheKey);
-    
+
     if (cachedMethod) {
       return this.adaptMethodToSpecificProject(cachedMethod, dimensions, options);
     }
-    
+
     try {
-      // Crear un prompt detallado para Claude
-      const methodPrompt = this.buildConstructionMethodPrompt(
-        projectType, 
-        projectSubtype, 
-        dimensions, 
-        options, 
-        location
-      );
-      
-      // Obtener recomendación detallada de Claude
-      const methodResponse = await this.anthropicClient.complete({
-        prompt: methodPrompt,
-        maxTokens: 3000
-      });
-      
-      // Parsear la respuesta para obtener el método de construcción
-      const constructionMethod = this.parseConstructionMethodResponse(methodResponse);
-      
+      let constructionMethod;
+
+      // Intentar primero con Anthropic debido a su mejor contexto
+      if (this.anthropicClient) {
+        try {
+          constructionMethod = await this.getMethodWithAnthropic(
+            projectType,
+            projectSubtype,
+            dimensions,
+            options,
+            location
+          );
+        } catch (error) {
+          console.warn('Error con Anthropic, intentando con OpenAI:', error);
+
+          // Si falla Anthropic, intentar con OpenAI si está disponible
+          if (this.openAIClient) {
+            constructionMethod = await this.getMethodWithOpenAI(
+              projectType,
+              projectSubtype,
+              dimensions,
+              options,
+              location
+            );
+          } else {
+            throw error; // Re-lanzar error si no hay OpenAI disponible
+          }
+        }
+      }
+      // Si no hay Anthropic, intentar directamente con OpenAI
+      else if (this.openAIClient) {
+        constructionMethod = await this.getMethodWithOpenAI(
+          projectType,
+          projectSubtype,
+          dimensions,
+          options,
+          location
+        );
+      }
+      // Si no hay ningún cliente disponible, usar método de fallback
+      else {
+        return this.getFallbackConstructionMethod(projectType, projectSubtype);
+      }
+
       // Guardar en caché
       this.constructionMethodCache.set(cacheKey, constructionMethod);
-      
+
       return constructionMethod;
-      
+
     } catch (error) {
       console.error('Error al determinar método de construcción:', error);
-      
+
       // Retornar método genérico en caso de error
       return this.getFallbackConstructionMethod(projectType, projectSubtype);
     }
   }
-  
+
+  /**
+   * Obtiene método de construcción usando Anthropic Claude
+   */
+  private async getMethodWithAnthropic(
+    projectType: string,
+    projectSubtype: string,
+    dimensions: any,
+    options: any,
+    location: Location
+  ): Promise<any> {
+    // Crear un prompt detallado para Claude
+    const methodPrompt = this.buildConstructionMethodPrompt(
+      projectType,
+      projectSubtype,
+      dimensions,
+      options,
+      location
+    );
+
+    // Obtener recomendación detallada de Claude
+    const methodResponse = await this.anthropicClient.complete({
+      prompt: methodPrompt,
+      maxTokens: 3000,
+      model: 'claude-3-opus-20240229' // Usar el modelo más avanzado para mejor investigación
+    });
+
+    // Parsear la respuesta para obtener el método de construcción
+    return this.parseConstructionMethodResponse(methodResponse);
+  }
+
+  /**
+   * Obtiene método de construcción usando OpenAI
+   */
+  private async getMethodWithOpenAI(
+    projectType: string,
+    projectSubtype: string,
+    dimensions: any,
+    options: any,
+    location: Location
+  ): Promise<any> {
+    if (!this.openAIClient) {
+      throw new Error('OpenAI client not configured');
+    }
+
+    // Crear un prompt detallado para GPT
+    const methodPrompt = this.buildConstructionMethodPrompt(
+      projectType,
+      projectSubtype,
+      dimensions,
+      options,
+      location
+    );
+
+    // Obtener recomendación detallada de GPT
+    const methodResponse = await this.openAIClient.complete({
+      prompt: methodPrompt,
+      maxTokens: 3000,
+      temperature: 0.2, // Bajo para respuestas más precisas
+      model: 'gpt-4o' // Usar GPT-4o para mejor calidad
+    });
+
+    // Parsear la respuesta para obtener el método de construcción
+    return this.parseConstructionMethodResponse(methodResponse);
+  }
+
   /**
    * Construye un prompt detallado para determinar el método de construcción
+   * Optimizado para extraer información técnica específica para cualquier tipo de proyecto
    */
   private buildConstructionMethodPrompt(
     projectType: string,
@@ -79,27 +233,39 @@ export class ConstructionMethodService {
     options: any,
     location: Location
   ): string {
+    // Format dimensions and options for better readability in the prompt
+    const dimensionsStr = Object.entries(dimensions)
+      .map(([key, value]) => `${key}: ${value}`)
+      .join(', ');
+
+    const optionsStr = Object.entries(options)
+      .map(([key, value]) => `${key}: ${value}`)
+      .join(', ');
+
     return `
-      Como maestro constructor con 30 años de experiencia en ${projectType},
-      necesito determinar el método óptimo de construcción para un proyecto de ${projectType}
-      (${projectSubtype}) en ${location.city}, ${location.state}.
+      Como maestro constructor con 30 años de experiencia en la industria de la construcción,
+      necesito determinar el método óptimo de construcción para un proyecto de ${projectType} 
+      (subtipo: ${projectSubtype}) en ${location.city || ''}, ${location.state || ''} ${location.zipCode || ''}.
       
       CARACTERÍSTICAS DEL PROYECTO:
-      Dimensiones: ${JSON.stringify(dimensions, null, 2)}
-      Especificaciones y opciones: ${JSON.stringify(options, null, 2)}
+      - Tipo: ${projectType}
+      - Subtipo: ${projectSubtype}
+      - Dimensiones: ${dimensionsStr}
+      - Opciones y especificaciones: ${optionsStr}
       
       CONSIDERACIONES LOCALES:
-      - Clima y condiciones ambientales típicas de ${location.city}, ${location.state}
-      - Códigos de construcción y regulaciones locales
-      - Condiciones del suelo comunes en la región
+      - Clima y condiciones ambientales típicas de ${location.state || location.zipCode || 'la región'}
+      - Códigos de construcción y regulaciones locales relevantes
+      - Prácticas comunes en la industria para este tipo de proyecto
       
-      Proporciona una descripción detallada del método de construcción óptimo incluyendo:
-      1. Descripción general del enfoque recomendado
-      2. Lista ordenada de pasos de construcción
-      3. Advertencias y consideraciones especiales
-      4. Nivel de habilidad requerido (1-5, donde 5 es experto)
+      Proporciona un método de construcción detallado basado exclusivamente en conocimientos técnicos y mejores prácticas de la industria, incluyendo:
+      
+      1. Descripción general del enfoque recomendado (técnicas, materiales principales y consideraciones clave)
+      2. Lista ordenada de pasos de construcción, desde preparación hasta finalización
+      3. Advertencias y precauciones específicas para este tipo de proyecto
+      4. Nivel de habilidad requerido (1-5, donde 5 es experto profesional)
       5. Tiempo estimado para completar (en horas)
-      6. Consideraciones especiales basadas en la ubicación
+      6. Consideraciones especiales basadas en el tipo de proyecto y ubicación
       
       Formatea tu respuesta como un objeto JSON con las propiedades:
       {
@@ -110,9 +276,13 @@ export class ConstructionMethodService {
         "estimatedTime": 24,
         "specialConsiderations": ["Consideración 1", "Consideración 2", ...]
       }
+      
+      Asegúrate de que la respuesta sea específica para este tipo de proyecto (${projectType} - ${projectSubtype}) 
+      y no una descripción genérica. Incluye detalles técnicos relevantes, técnicas específicas, y mejores prácticas
+      actuales de la industria.
     `;
   }
-  
+
   /**
    * Parsea la respuesta para extraer el método de construcción recomendado
    */
@@ -120,28 +290,28 @@ export class ConstructionMethodService {
     try {
       // Buscar estructura JSON en la respuesta
       const jsonMatch = response.match(/\{\s*"[^"]+"\s*:[\s\S]*?\}/);
-      
+
       if (jsonMatch) {
         const methodJson = jsonMatch[0];
         return JSON.parse(methodJson);
       }
-      
+
       // Si no hay JSON, intentar extraer información clave
       const description = this.extractResponsePart(response, ['descripción', 'description', 'enfoque', 'método']);
       const steps = this.extractListItems(response, ['pasos', 'steps', 'procedimiento']);
       const warnings = this.extractListItems(response, ['advertencias', 'warnings', 'precauciones']);
-      
+
       // Buscar nivel de habilidad (1-5)
       const skillLevelMatch = response.match(/[Nn]ivel\s+de\s+habilidad\s*:?\s*(\d)/);
       const skillLevel = skillLevelMatch ? parseInt(skillLevelMatch[1]) : 3;
-      
+
       // Buscar tiempo estimado
       const timeMatch = response.match(/[Tt]iempo\s+estimado\s*:?\s*(\d+)(?:\s*-\s*\d+)?\s*horas/);
       const estimatedTime = timeMatch ? parseInt(timeMatch[1]) : 24;
-      
+
       // Consideraciones especiales
       const specialConsiderations = this.extractListItems(response, ['consideraciones', 'considerations']);
-      
+
       return {
         description: description || 'Método estándar de construcción',
         steps: steps.length > 0 ? steps : ['Preparar el sitio', 'Instalar materiales', 'Acabado y limpieza'],
@@ -150,10 +320,10 @@ export class ConstructionMethodService {
         estimatedTime: estimatedTime,
         specialConsiderations: specialConsiderations.length > 0 ? specialConsiderations : []
       };
-      
+
     } catch (error) {
       console.error('Error al parsear método de construcción:', error);
-      
+
       // Retornar estructura básica en caso de error
       return {
         description: 'Método estándar de construcción',
@@ -165,13 +335,13 @@ export class ConstructionMethodService {
       };
     }
   }
-  
+
   /**
    * Extrae una parte específica de la respuesta basada en palabras clave
    */
   private extractResponsePart(response: string, keywords: string[]): string {
     const paragraphs = response.split('\n\n');
-    
+
     for (const paragraph of paragraphs) {
       for (const keyword of keywords) {
         if (paragraph.toLowerCase().includes(keyword.toLowerCase())) {
@@ -179,36 +349,36 @@ export class ConstructionMethodService {
         }
       }
     }
-    
+
     return '';
   }
-  
+
   /**
    * Extrae elementos de lista de la respuesta basados en secciones con palabras clave
    */
   private extractListItems(response: string, sectionKeywords: string[]): string[] {
     const items: string[] = [];
-    
+
     // Buscar secciones que contengan las palabras clave
     for (const keyword of sectionKeywords) {
       const pattern = new RegExp(`(?:${keyword}[^\\n]*:\\s*|${keyword}[^\\n]*\\n\\s*)((?:\\d+\\.\\s*[^\\n]+\\n)+)`, 'i');
       const match = response.match(pattern);
-      
+
       if (match && match[1]) {
         // Extraer elementos de lista numerada
         const listText = match[1];
         const listItems = listText.match(/\d+\.\s*([^\n]+)/g);
-        
+
         if (listItems) {
           items.push(...listItems.map(item => item.replace(/^\d+\.\s*/, '').trim()));
           break;
         }
       }
     }
-    
+
     return items;
   }
-  
+
   /**
    * Adapta un método de construcción general a un proyecto específico
    */
@@ -219,24 +389,24 @@ export class ConstructionMethodService {
   ): any {
     // Esta función podría ajustar tiempos estimados, pasos específicos, etc.
     // basados en las dimensiones y opciones particulares del proyecto
-    
+
     const adaptedMethod = { ...method };
-    
+
     // Ajustar tiempo estimado basado en dimensiones
     if (dimensions.area || dimensions.squareFeet) {
       const area = dimensions.area || dimensions.squareFeet;
       const sizeMultiplier = this.calculateSizeMultiplier(area);
       adaptedMethod.estimatedTime = Math.ceil(method.estimatedTime * sizeMultiplier);
     }
-    
+
     // Ajustar nivel de habilidad requerido basado en opciones
     if (options.complexity === 'high' || options.customFeatures) {
       adaptedMethod.requiredSkillLevel = Math.min(5, method.requiredSkillLevel + 1);
     }
-    
+
     return adaptedMethod;
   }
-  
+
   /**
    * Calcula un multiplicador basado en el tamaño del proyecto
    */
@@ -246,7 +416,7 @@ export class ConstructionMethodService {
     if (area < 1000) return 1.3; // Proyecto grande
     return 1.5;                  // Proyecto muy grande
   }
-  
+
   /**
    * Proporciona un método de construcción genérico como fallback
    */
@@ -320,21 +490,21 @@ export class ConstructionMethodService {
         ]
       }
     };
-    
+
     // Buscar por tipo exacto
     if (methodsByType[projectType]) {
       return methodsByType[projectType];
     }
-    
+
     // Buscar coincidencia parcial
-    const matchedKey = Object.keys(methodsByType).find(key => 
+    const matchedKey = Object.keys(methodsByType).find(key =>
       projectType.includes(key) || key.includes(projectType)
     );
-    
+
     if (matchedKey) {
       return methodsByType[matchedKey];
     }
-    
+
     // Método genérico predeterminado
     return {
       description: `Método estándar de construcción para ${projectType}`,
