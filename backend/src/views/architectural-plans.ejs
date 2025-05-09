@@ -1,0 +1,652 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title><%= title %></title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        .drag-area {
+            border: 2px dashed #6c757d;
+            border-radius: 5px;
+            padding: 40px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        .drag-area.active {
+            border-color: #198754;
+            background-color: rgba(25, 135, 84, 0.1);
+        }
+        .preview-image {
+            max-width: 100%;
+            max-height: 300px;
+            margin-top: 20px;
+        }
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(255, 255, 255, 0.8);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+        <div class="container">
+            <a class="navbar-brand" href="/">Owl Fence Estimator</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav">
+                    <li class="nav-item">
+                        <a class="nav-link" href="/">Inicio</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link active" href="/architectural-plans">Planos Arquitectónicos</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/config/prices">Configuración de Precios</a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container my-5">
+        <div class="row mb-4">
+            <div class="col">
+                <h1 class="display-5 mb-3">Análisis de Planos Arquitectónicos</h1>
+                <p class="lead">
+                    Sube un plano arquitectónico o plano ADU y obtén un estimado detallado y profesional basado en el análisis OCR automático.
+                </p>
+                <p>
+                    El sistema puede procesar planos en formato PDF, JPEG, PNG o TIFF para extraer dimensiones, 
+                    materiales y estructuras, generando un estimado completo adaptado a los requerimientos del proyecto.
+                </p>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-md-6">
+                <div class="card mb-4">
+                    <div class="card-header bg-primary text-white">
+                        <h5 class="card-title mb-0">Subir Plano Arquitectónico</h5>
+                    </div>
+                    <div class="card-body">
+                        <form id="uploadForm">
+                            <div class="drag-area mb-3" id="dropZone">
+                                <div id="dropText">
+                                    <i class="fas fa-cloud-upload-alt mb-2 fs-1"></i>
+                                    <p>Arrastra y suelta el archivo aquí o <strong>haz clic para seleccionar</strong></p>
+                                    <p class="text-muted small">Formatos aceptados: PDF, JPEG, PNG, TIFF (Máx. 20MB)</p>
+                                </div>
+                                <div id="previewContainer" class="mt-2" style="display: none;">
+                                    <img id="filePreview" class="preview-image" src="" alt="Vista previa">
+                                    <p id="fileName" class="mt-2"></p>
+                                </div>
+                                <input type="file" id="fileInput" hidden accept=".pdf,.jpg,.jpeg,.png,.tif,.tiff">
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="projectType" class="form-label">Tipo de Proyecto</label>
+                                <select class="form-select" id="projectType" name="projectType" required>
+                                    <option value="" disabled selected>Selecciona un tipo de proyecto</option>
+                                    <option value="fence">Cerca (Fence)</option>
+                                    <option value="deck">Terraza (Deck)</option>
+                                    <option value="adu">Unidad de Vivienda Accesoria (ADU)</option>
+                                    <option value="room_addition">Adición de Habitación</option>
+                                    <option value="remodel">Remodelación</option>
+                                    <option value="general">General</option>
+                                </select>
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="zipCode" class="form-label">Código Postal</label>
+                                <input type="text" class="form-control" id="zipCode" name="zipCode" placeholder="Ej: 90210" required>
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="clientName" class="form-label">Nombre del Cliente</label>
+                                <input type="text" class="form-control" id="clientName" name="clientName" placeholder="Opcional">
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="notes" class="form-label">Notas Adicionales</label>
+                                <textarea class="form-control" id="notes" name="notes" rows="3" placeholder="Detalles adicionales sobre el proyecto..."></textarea>
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="templateStyle" class="form-label">Estilo de Plantilla</label>
+                                <select class="form-select" id="templateStyle" name="templateStyle">
+                                    <option value="professional">Profesional</option>
+                                    <option value="modern">Moderno</option>
+                                    <option value="minimalist">Minimalista</option>
+                                    <option value="elegant">Elegante</option>
+                                    <option value="rustic">Rústico</option>
+                                </select>
+                            </div>
+
+                            <div class="d-grid gap-2">
+                                <button type="button" id="btnAnalyze" class="btn btn-primary">Analizar Plano</button>
+                                <button type="button" id="btnEstimate" class="btn btn-success">Generar Estimado Completo</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-6">
+                <div class="card mb-4">
+                    <div class="card-header bg-secondary text-white">
+                        <h5 class="card-title mb-0">Resultados del Análisis</h5>
+                    </div>
+                    <div class="card-body">
+                        <div id="resultsContainer" class="mb-4">
+                            <p class="text-center text-muted">Los resultados del análisis aparecerán aquí</p>
+                        </div>
+                        <div class="accordion" id="accordionResults">
+                            <div class="accordion-item">
+                                <h2 class="accordion-header">
+                                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseOne">
+                                        Elementos Detectados
+                                    </button>
+                                </h2>
+                                <div id="collapseOne" class="accordion-collapse collapse" data-bs-parent="#accordionResults">
+                                    <div class="accordion-body" id="elementsResults">
+                                        <p class="text-muted">Sin datos aún</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="accordion-item">
+                                <h2 class="accordion-header">
+                                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseTwo">
+                                        Dimensiones y Escala
+                                    </button>
+                                </h2>
+                                <div id="collapseTwo" class="accordion-collapse collapse" data-bs-parent="#accordionResults">
+                                    <div class="accordion-body" id="dimensionsResults">
+                                        <p class="text-muted">Sin datos aún</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="accordion-item">
+                                <h2 class="accordion-header">
+                                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseThree">
+                                        Estimado de Costos
+                                    </button>
+                                </h2>
+                                <div id="collapseThree" class="accordion-collapse collapse" data-bs-parent="#accordionResults">
+                                    <div class="accordion-body" id="costsResults">
+                                        <p class="text-muted">Sin datos aún</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="card mb-4">
+                    <div class="card-header bg-info text-white">
+                        <h5 class="card-title mb-0">Acciones</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="d-grid gap-2">
+                            <button id="btnDownloadPDF" class="btn btn-outline-primary" disabled>
+                                <i class="fas fa-file-pdf"></i> Descargar como PDF
+                            </button>
+                            <button id="btnSendByEmail" class="btn btn-outline-secondary" disabled>
+                                <i class="fas fa-envelope"></i> Enviar por Email
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Loading Overlay -->
+    <div class="loading-overlay" id="loadingOverlay">
+        <div class="spinner-border text-primary mb-3" role="status" style="width: 3rem; height: 3rem;">
+            <span class="visually-hidden">Cargando...</span>
+        </div>
+        <h4 id="loadingText">Analizando plano arquitectónico...</h4>
+        <p id="loadingSubtext" class="text-muted">Este proceso puede tardar unos minutos.</p>
+    </div>
+
+    <footer class="bg-dark text-white py-4 mt-5">
+        <div class="container">
+            <div class="row">
+                <div class="col-md-6">
+                    <h5>Owl Fence Estimator</h5>
+                    <p>Sistema avanzado de estimación con tecnología OCR e inteligencia artificial para análisis de planos arquitectónicos.</p>
+                </div>
+                <div class="col-md-3">
+                    <h5>Enlaces</h5>
+                    <ul class="list-unstyled">
+                        <li><a href="/" class="text-white">Inicio</a></li>
+                        <li><a href="/architectural-plans" class="text-white">Planos Arquitectónicos</a></li>
+                        <li><a href="/config/prices" class="text-white">Configuración</a></li>
+                    </ul>
+                </div>
+                <div class="col-md-3">
+                    <h5>Soporte</h5>
+                    <ul class="list-unstyled">
+                        <li><a href="#" class="text-white">Documentación</a></li>
+                        <li><a href="#" class="text-white">Contacto</a></li>
+                    </ul>
+                </div>
+            </div>
+            <hr>
+            <div class="text-center">
+                <p class="mb-0">&copy; 2025 Owl Fence Estimator. Todos los derechos reservados.</p>
+            </div>
+        </div>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://kit.fontawesome.com/a076d05399.js" crossorigin="anonymous"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Elementos DOM
+            const dropZone = document.getElementById('dropZone');
+            const fileInput = document.getElementById('fileInput');
+            const previewContainer = document.getElementById('previewContainer');
+            const filePreview = document.getElementById('filePreview');
+            const fileName = document.getElementById('fileName');
+            const dropText = document.getElementById('dropText');
+            const btnAnalyze = document.getElementById('btnAnalyze');
+            const btnEstimate = document.getElementById('btnEstimate');
+            const btnDownloadPDF = document.getElementById('btnDownloadPDF');
+            const btnSendByEmail = document.getElementById('btnSendByEmail');
+            const resultsContainer = document.getElementById('resultsContainer');
+            const elementsResults = document.getElementById('elementsResults');
+            const dimensionsResults = document.getElementById('dimensionsResults');
+            const costsResults = document.getElementById('costsResults');
+            const loadingOverlay = document.getElementById('loadingOverlay');
+            const loadingText = document.getElementById('loadingText');
+            const loadingSubtext = document.getElementById('loadingSubtext');
+
+            // Eventos para drag and drop
+            dropZone.addEventListener('click', () => fileInput.click());
+            
+            dropZone.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                dropZone.classList.add('active');
+            });
+            
+            dropZone.addEventListener('dragleave', () => {
+                dropZone.classList.remove('active');
+            });
+            
+            dropZone.addEventListener('drop', (e) => {
+                e.preventDefault();
+                dropZone.classList.remove('active');
+                
+                const file = e.dataTransfer.files[0];
+                handleFile(file);
+            });
+            
+            fileInput.addEventListener('change', () => {
+                if (fileInput.files.length > 0) {
+                    handleFile(fileInput.files[0]);
+                }
+            });
+            
+            // Función para manejar el archivo seleccionado
+            function handleFile(file) {
+                // Validar tipo de archivo
+                const validTypes = ['application/pdf', 'image/jpeg', 'image/png', 'image/tiff'];
+                const extension = file.name.split('.').pop().toLowerCase();
+                const validExtensions = ['pdf', 'jpg', 'jpeg', 'png', 'tif', 'tiff'];
+                
+                if (!validExtensions.includes(extension)) {
+                    alert('Por favor selecciona un archivo PDF, JPEG, PNG o TIFF.');
+                    return;
+                }
+                
+                // Mostrar vista previa
+                dropText.style.display = 'none';
+                previewContainer.style.display = 'block';
+                fileName.textContent = file.name;
+                
+                // Si es imagen, mostrar previa
+                if (file.type.startsWith('image/')) {
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        filePreview.src = e.target.result;
+                        filePreview.style.display = 'block';
+                    };
+                    reader.readAsDataURL(file);
+                } else {
+                    // Si es PDF, mostrar icono
+                    filePreview.src = '/images/pdf-icon.png'; // Asegúrate de tener esta imagen
+                    filePreview.style.display = 'block';
+                }
+            }
+            
+            // Evento para botón Analizar
+            btnAnalyze.addEventListener('click', () => {
+                if (!fileInput.files[0]) {
+                    alert('Por favor selecciona un archivo primero.');
+                    return;
+                }
+                
+                const projectType = document.getElementById('projectType').value;
+                const zipCode = document.getElementById('zipCode').value;
+                
+                if (!projectType || !zipCode) {
+                    alert('Por favor completa el tipo de proyecto y código postal.');
+                    return;
+                }
+                
+                analyzeArchitecturalPlan(false);
+            });
+            
+            // Evento para botón Generar Estimado
+            btnEstimate.addEventListener('click', () => {
+                if (!fileInput.files[0]) {
+                    alert('Por favor selecciona un archivo primero.');
+                    return;
+                }
+                
+                const projectType = document.getElementById('projectType').value;
+                const zipCode = document.getElementById('zipCode').value;
+                
+                if (!projectType || !zipCode) {
+                    alert('Por favor completa el tipo de proyecto y código postal.');
+                    return;
+                }
+                
+                analyzeArchitecturalPlan(true);
+            });
+            
+            // Función para analizar plano arquitectónico
+            function analyzeArchitecturalPlan(generateEstimate = false) {
+                // Mostrar loading
+                loadingText.textContent = generateEstimate ? 
+                    'Generando estimado completo...' : 
+                    'Analizando plano arquitectónico...';
+                    
+                loadingSubtext.textContent = generateEstimate ? 
+                    'Este proceso puede tardar hasta 1-2 minutos.' : 
+                    'El análisis OCR puede tardar hasta 30 segundos.';
+                    
+                loadingOverlay.style.display = 'flex';
+                
+                const formData = new FormData();
+                formData.append('planFile', fileInput.files[0]);
+                formData.append('projectType', document.getElementById('projectType').value);
+                formData.append('zipCode', document.getElementById('zipCode').value);
+                formData.append('clientName', document.getElementById('clientName').value);
+                formData.append('notes', document.getElementById('notes').value);
+                formData.append('templateStyle', document.getElementById('templateStyle').value);
+                
+                // Endpoint según la acción
+                const endpoint = generateEstimate ? 
+                    '/api/plans/estimate' : 
+                    '/api/plans/analyze';
+                    
+                fetch(endpoint, {
+                    method: 'POST',
+                    body: formData
+                })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Error en la respuesta del servidor');
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    // Ocultar loading
+                    loadingOverlay.style.display = 'none';
+                    
+                    if (data.success) {
+                        displayResults(data, generateEstimate);
+                        
+                        // Habilitar botones de acción
+                        btnDownloadPDF.disabled = false;
+                        btnSendByEmail.disabled = false;
+                    } else {
+                        throw new Error(data.error || 'Error desconocido');
+                    }
+                })
+                .catch(error => {
+                    // Ocultar loading
+                    loadingOverlay.style.display = 'none';
+                    
+                    // Mostrar error
+                    resultsContainer.innerHTML = `
+                        <div class="alert alert-danger">
+                            <h4 class="alert-heading">Error</h4>
+                            <p>${error.message}</p>
+                        </div>
+                    `;
+                    
+                    console.error('Error:', error);
+                });
+            }
+            
+            // Función para mostrar resultados
+            function displayResults(data, isEstimate) {
+                // Limpiar contenedor de resultados
+                resultsContainer.innerHTML = '';
+                
+                if (isEstimate) {
+                    // Mostrar estimado completo
+                    const estimate = data.estimate;
+                    
+                    resultsContainer.innerHTML = `
+                        <div class="alert alert-success">
+                            <h4 class="alert-heading">Estimado Generado Exitosamente</h4>
+                            <p>Se ha generado un estimado completo basado en el plano arquitectónico.</p>
+                        </div>
+                        <div class="card mb-3">
+                            <div class="card-header bg-success text-white">
+                                <h5 class="card-title mb-0">Resumen del Estimado</h5>
+                            </div>
+                            <div class="card-body">
+                                <h5>${estimate.projectTitle || 'Proyecto'}</h5>
+                                <p><strong>Cliente:</strong> ${estimate.clientName || 'No especificado'}</p>
+                                <p><strong>Costo Total Estimado:</strong> $${estimate.totalCost ? estimate.totalCost.toLocaleString() : 'N/A'}</p>
+                                <p><strong>Plano Analizado:</strong> ${estimate.sourceFile || data.planAnalysis.metadata.detectedFeatures.join(', ')}</p>
+                            </div>
+                        </div>
+                    `;
+                    
+                    // Actualizar secciones del acordeón
+                    updateElementsResults(data.planAnalysis.elements);
+                    updateDimensionsResults(data.planAnalysis);
+                    updateCostsResults(estimate);
+                } else {
+                    // Mostrar solo análisis
+                    const planAnalysis = data.planAnalysis;
+                    
+                    resultsContainer.innerHTML = `
+                        <div class="alert alert-info">
+                            <h4 class="alert-heading">Análisis Completado</h4>
+                            <p>Se ha analizado el plano arquitectónico con un nivel de confianza del ${(planAnalysis.metadata.confidenceScore * 100).toFixed(0)}%.</p>
+                        </div>
+                        <div class="card mb-3">
+                            <div class="card-header bg-info text-white">
+                                <h5 class="card-title mb-0">Resumen del Análisis</h5>
+                            </div>
+                            <div class="card-body">
+                                <p><strong>Área Total:</strong> ${planAnalysis.totalArea ? planAnalysis.totalArea.toLocaleString() + ' ft²' : 'No detectada'}</p>
+                                <p><strong>Elementos Detectados:</strong> ${planAnalysis.metadata.detectedFeatures.join(', ')}</p>
+                                <p><strong>Escala del Plano:</strong> 1" = ${planAnalysis.scale || 'No detectada'}"</p>
+                            </div>
+                        </div>
+                    `;
+                    
+                    // Actualizar secciones del acordeón
+                    updateElementsResults(planAnalysis.elements);
+                    updateDimensionsResults(planAnalysis);
+                    updateCostsResults(planAnalysis.estimatedCosts);
+                }
+            }
+            
+            // Actualizar sección de elementos
+            function updateElementsResults(elements) {
+                if (!elements || elements.length === 0) {
+                    elementsResults.innerHTML = '<p class="text-muted">No se detectaron elementos</p>';
+                    return;
+                }
+                
+                let html = '<table class="table table-sm table-striped"><thead><tr><th>Elemento</th><th>Cantidad</th><th>Dimensiones</th></tr></thead><tbody>';
+                
+                elements.forEach(element => {
+                    const dimensions = element.dimensions ? 
+                        Object.entries(element.dimensions)
+                            .map(([key, value]) => `${key}: ${value}`)
+                            .join(', ') : 
+                        'N/A';
+                        
+                    html += `
+                        <tr>
+                            <td>${capitalizeFirstLetter(element.type)}</td>
+                            <td>${element.quantity || 1}</td>
+                            <td>${dimensions}</td>
+                        </tr>
+                    `;
+                });
+                
+                html += '</tbody></table>';
+                elementsResults.innerHTML = html;
+            }
+            
+            // Actualizar sección de dimensiones
+            function updateDimensionsResults(analysis) {
+                if (!analysis.dimensions || Object.keys(analysis.dimensions).length === 0) {
+                    dimensionsResults.innerHTML = '<p class="text-muted">No se detectaron dimensiones</p>';
+                    return;
+                }
+                
+                let html = '<table class="table table-sm"><tbody>';
+                
+                Object.entries(analysis.dimensions).forEach(([key, value]) => {
+                    html += `
+                        <tr>
+                            <th>${capitalizeFirstLetter(key)}</th>
+                            <td>${value} ${key === 'area' ? 'ft²' : 'ft'}</td>
+                        </tr>
+                    `;
+                });
+                
+                if (analysis.scale) {
+                    html += `
+                        <tr>
+                            <th>Escala</th>
+                            <td>1" = ${analysis.scale}"</td>
+                        </tr>
+                    `;
+                }
+                
+                if (analysis.totalArea) {
+                    html += `
+                        <tr>
+                            <th>Área Total</th>
+                            <td>${analysis.totalArea.toLocaleString()} ft²</td>
+                        </tr>
+                    `;
+                }
+                
+                html += '</tbody></table>';
+                dimensionsResults.innerHTML = html;
+            }
+            
+            // Actualizar sección de costos
+            function updateCostsResults(costs) {
+                if (!costs || (!costs.materials && !costs.labor && !costs.total)) {
+                    costsResults.innerHTML = '<p class="text-muted">No hay información de costos disponible</p>';
+                    return;
+                }
+                
+                let html = `
+                    <div class="alert alert-warning">
+                        <strong>Nota:</strong> Estos costos son estimados y pueden variar según condiciones específicas del proyecto.
+                    </div>
+                    <table class="table table-sm">
+                        <tbody>
+                `;
+                
+                // Materiales
+                if (costs.materials) {
+                    const materialTotal = Object.values(costs.materials).reduce((sum, cost) => sum + (typeof cost === 'number' ? cost : 0), 0);
+                    
+                    html += `
+                        <tr>
+                            <th>Materiales</th>
+                            <td>$${materialTotal.toLocaleString()}</td>
+                        </tr>
+                    `;
+                    
+                    // Desglose de materiales
+                    Object.entries(costs.materials).forEach(([key, value]) => {
+                        if (typeof value === 'number' && value > 0) {
+                            html += `
+                                <tr>
+                                    <td class="ps-4">- ${capitalizeFirstLetter(key)}</td>
+                                    <td>$${value.toLocaleString()}</td>
+                                </tr>
+                            `;
+                        }
+                    });
+                }
+                
+                // Mano de obra
+                if (costs.labor) {
+                    const laborTotal = Object.values(costs.labor).reduce((sum, cost) => sum + (typeof cost === 'number' ? cost : 0), 0);
+                    
+                    html += `
+                        <tr>
+                            <th>Mano de Obra</th>
+                            <td>$${laborTotal.toLocaleString()}</td>
+                        </tr>
+                    `;
+                    
+                    // Desglose de mano de obra
+                    Object.entries(costs.labor).forEach(([key, value]) => {
+                        if (typeof value === 'number' && value > 0) {
+                            html += `
+                                <tr>
+                                    <td class="ps-4">- ${capitalizeFirstLetter(key)}</td>
+                                    <td>$${value.toLocaleString()}</td>
+                                </tr>
+                            `;
+                        }
+                    });
+                }
+                
+                // Total
+                if (costs.total) {
+                    html += `
+                        <tr class="table-primary">
+                            <th>TOTAL ESTIMADO</th>
+                            <td><strong>$${costs.total.toLocaleString()}</strong></td>
+                        </tr>
+                    `;
+                }
+                
+                html += '</tbody></table>';
+                costsResults.innerHTML = html;
+            }
+            
+            // Utilidad para capitalizar primera letra
+            function capitalizeFirstLetter(string) {
+                if (!string) return '';
+                return string.charAt(0).toUpperCase() + string.slice(1);
+            }
+        });
+    </script>
+</body>
+</html>

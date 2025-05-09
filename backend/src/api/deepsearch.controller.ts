@@ -14,7 +14,8 @@ const anthropicClient = new AnthropicClient(config.anthropic.apiKey);
 const constructionMethodCache = new ConstructionMethodCacheService();
 const constructionMethodService = new ConstructionMethodService(anthropicClient, constructionMethodCache);
 const priceApiService = new PriceApiService();
-const priceResearchService = new PriceResearchService(openAIClient);
+// Corrigiendo la inicialización para seguir la firma correcta: (enableAI, cacheTTL, openAIClient)
+const priceResearchService = new PriceResearchService(true, 86400, openAIClient);
 
 // Crear instancia del motor DeepSearch
 const deepSearchEngine = new DeepSearchEngine(

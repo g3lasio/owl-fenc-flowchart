@@ -1,0 +1,14 @@
+{
+  "openai": {
+    "calls": 0,
+    "tokens": 0,
+    "lastReset": "2025-05-07",
+    "monthlyCap": 1000000
+  },
+  "anthropic": {
+    "calls": 0,
+    "tokens": 0,
+    "lastReset": "2025-05-07",
+    "monthlyCap": 1000000
+  }
+}

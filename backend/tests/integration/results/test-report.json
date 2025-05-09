@@ -1,0 +1,18 @@
+{
+  "timestamp": "2025-05-07T06:29:27.836Z",
+  "summary": {
+    "total": 1,
+    "success": 0,
+    "failure": 1,
+    "successRate": "0.00%",
+    "averageProcessingTime": "0.00s"
+  },
+  "results": [
+    {
+      "fileName": "sample-plan.pdf",
+      "success": false,
+      "processingTimeMs": 0,
+      "error": "Error en OCR de Mistral: Request failed with status code 500"
+    }
+  ]
+}

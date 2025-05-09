@@ -46,14 +46,49 @@
     .material-item:last-child, .service-item:last-child {
       border-bottom: none;
     }
+    
+    /* Added responsive improvements */
+    @media (max-width: 767px) {
+      .container {
+        padding: 10px;
+      }
+      .card-body {
+        padding: 15px;
+      }
+      .form-label {
+        margin-bottom: 0.3rem;
+      }
+      .mb-3 {
+        margin-bottom: 0.75rem !important;
+      }
+    }
+    
+    /* Ensure tables can be scrolled horizontally on mobile */
+    .table-responsive-sm {
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+    
+    /* Improve form layout on smaller screens */
+    @media (max-width: 576px) {
+      .card-header {
+        padding: 10px 15px;
+      }
+      .form-select, .form-control {
+        font-size: 0.9rem;
+      }
+      h4.mb-0 {
+        font-size: 1.2rem;
+      }
+    }
   </style>
 </head>
 <body>
   <div class="container">
     <h1 class="text-center mb-4">Motor DeepSearch - Interfaz de Pruebas</h1>
     
-    <div class="row">
-      <div class="col-md-5">
+    <div class="row g-3">
+      <div class="col-lg-5 col-md-12">
         <div class="card">
           <div class="card-header bg-primary text-white">
             <h4 class="mb-0">Datos del Proyecto</h4>
@@ -117,7 +152,7 @@
         </div>
       </div>
       
-      <div class="col-md-7">
+      <div class="col-lg-7 col-md-12">
         <div class="loading-spinner" id="loading-spinner">
           <div class="spinner-border text-primary" role="status">
             <span class="visually-hidden">Cargando...</span>
@@ -137,7 +172,7 @@
             </div>
             
             <h5>Materiales Necesarios</h5>
-            <div class="mb-4 table-responsive">
+            <div class="mb-4 table-responsive table-responsive-sm">
               <table class="table table-sm table-hover">
                 <thead class="table-light">
                   <tr>
@@ -160,7 +195,7 @@
             </div>
             
             <h5>Servicios y Mano de Obra</h5>
-            <div class="mb-4 table-responsive">
+            <div class="mb-4 table-responsive table-responsive-sm">
               <table class="table table-sm table-hover">
                 <thead class="table-light">
                   <tr>

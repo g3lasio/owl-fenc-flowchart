@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Estimate - {{estimate.projectName}}</title>
+    <style>
+        :root {
+            --primary-color: {{templateConfig.primaryColor}};
+            --secondary-color: {{templateConfig.secondaryColor}};
+            --accent-color: {{templateConfig.accentColor}};
+            --font-family: {{templateConfig.fontFamily}};
+        }
+        
+        body {
+            font-family: var(--font-family);
+            margin: 0;
+            padding: 0;
+            color: #333;
+            line-height: 1.6;
+            background-color: #fff;
+        }
+        
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 0;
+            background-color: white;
+        }
+        
+        .header {
+            padding: 40px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid #eee;
+        }
+        
+        .logo-section {
+            display: flex;
+            align-items: center;
+        }
+        
+        .logo {
+            width: 80px;
+            height: auto;
+            margin-right: 20px;
+        }
+        
+        .company-name {
+            font-size: 28px;
+            font-weight: bold;
+            color: var(--primary-color);
+        }
+        
+        .company-contact {
+            font-size: 14px;
+            color: #666;
+        }
+        
+        .estimate-title {
+            margin: 0;
+            padding: 20px 40px;
+            font-size: 22px;
+            font-weight: bold;
+            color: var(--primary-color);
+            border-bottom: 1px solid #eee;
+        }
+        
+        .content {
+            padding: 40px;
+        }
+        
+        .client-project-info {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 40px;
+        }
+        
+        .client-info, .project-info {
+            width: 48%;
+        }
+        
+        .section-title {
+            color: var(--primary-color);
+            font-size: 18px;
+            margin-bottom: 15px;
+            padding-bottom: 5px;
+            border-bottom: 2px solid var(--accent-color);
+            font-weight: normal;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        
+        .info-row {
+            margin-bottom: 8px;
+            display: flex;
+        }
+        
+        .info-label {
+            font-weight: bold;
+            width: 80px;
+            flex-shrink: 0;
+            color: #666;
+        }
+        
+        .materials-section, .labor-section {
+            margin-bottom: 40px;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+        }
+        
+        th {
+            background-color: #f8f8f8;
+            color: var(--primary-color);
+            text-align: left;
+            padding: 12px;
+            font-weight: normal;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            font-size: 13px;
+            border-bottom: 2px solid #eee;
+        }
+        
+        td {
+            padding: 12px;
+            border-bottom: 1px solid #eee;
+        }
+        
+        .price {
+            text-align: right;
+            font-weight: bold;
+            color: var(--secondary-color);
+        }
+        
+        .total-section {
+            margin-top: 40px;
+            border-top: 1px solid #eee;
+            padding-top: 20px;
+        }
+        
+        .subtotal, .tax, .total {
+            display: flex;
+            justify-content: flex-end;
+            margin-bottom: 10px;
+        }
+        
+        .total {
+            font-size: 20px;
+            font-weight: bold;
+            color: var(--primary-color);
+            border-top: 1px solid #eee;
+            padding-top: 10px;
+            margin-top: 10px;
+        }
+        
+        .total-label, .subtotal-label, .tax-label {
+            width: 150px;
+            margin-right: 20px;
+            text-align: right;
+        }
+        
+        .signature-section {
+            margin-top: 50px;
+            display: flex;
+            justify-content: space-between;
+        }
+        
+        .signature-box {
+            width: 45%;
+            padding-top: 20px;
+            border-top: 1px solid #eee;
+            text-align: center;
+        }
+        
+        .terms-section {
+            margin-top: 50px;
+            padding: 20px;
+            background-color: #f9f9f9;
+            border-left: 3px solid var(--accent-color);
+        }
+        
+        .footer {
+            background-color: #f9f9f9;
+            color: #666;
+            padding: 20px 40px;
+            text-align: center;
+            margin-top: 50px;
+            font-size: 14px;
+            border-top: 1px solid #eee;
+        }
+        
+        .qr-code {
+            text-align: center;
+            margin: 40px 0;
+        }
+        
+        .qr-code img {
+            width: 100px;
+            height: 100px;
+        }
+        
+        @media print {
+            body {
+                print-color-adjust: exact;
+                -webkit-print-color-adjust: exact;
+            }
+            
+            .container {
+                max-width: 100%;
+                box-shadow: none;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="logo-section">
+                {{#if company.logoUrl}}
+                <img src="{{company.logoUrl}}" alt="{{company.name}} Logo" class="logo">
+                {{/if}}
+                <div>
+                    <div class="company-name">{{company.name}}</div>
+                </div>
+            </div>
+            <div class="company-contact">
+                {{company.address}}<br>
+                {{company.city}}, {{company.state}} {{company.zipCode}}<br>
+                Tel: {{company.phone}}<br>
+                Email: {{company.email}}
+            </div>
+        </div>
+        
+        <div class="estimate-title">
+            Estimate #{{estimate.estimateNumber}}
+        </div>
+        
+        <div class="content">
+            <div class="client-project-info">
+                <div class="client-info">
+                    <h3 class="section-title">Client Information</h3>
+                    <div class="info-row">
+                        <span class="info-label">Name:</span> {{client.name}}
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Address:</span> {{client.address}}
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">City:</span> {{client.city}}, {{client.state}} {{client.zipCode}}
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Phone:</span> {{client.phone}}
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Email:</span> {{client.email}}
+                    </div>
+                </div>
+                
+                <div class="project-info">
+                    <h3 class="section-title">Project Information</h3>
+                    <div class="info-row">
+                        <span class="info-label">Name:</span> {{estimate.projectName}}
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Location:</span> {{estimate.projectLocation}}
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Date:</span> {{formatDate estimate.estimateDate}}
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Valid Until:</span> {{formatDate estimate.validUntil}}
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Consultant:</span> {{estimate.consultant}}
+                    </div>
+                </div>
+            </div>
+            
+            <div class="materials-section">
+                <h3 class="section-title">Materials</h3>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Description</th>
+                            <th>Quantity</th>
+                            <th>Unit</th>
+                            <th>Unit Price</th>
+                            <th>Total</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {{#each estimate.materials}}
+                        <tr>
+                            <td>{{this.description}}</td>
+                            <td>{{this.quantity}}</td>
+                            <td>{{this.unit}}</td>
+                            <td class="price">{{formatCurrency this.unitPrice}}</td>
+                            <td class="price">{{formatCurrency this.total}}</td>
+                        </tr>
+                        {{/each}}
+                    </tbody>
+                </table>
+            </div>
+            
+            <div class="labor-section">
+                <h3 class="section-title">Labor</h3>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Description</th>
+                            <th>Hours</th>
+                            <th>Rate</th>
+                            <th>Total</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {{#each estimate.labor}}
+                        <tr>
+                            <td>{{this.description}}</td>
+                            <td>{{this.hours}}</td>
+                            <td class="price">{{formatCurrency this.rate}}</td>
+                            <td class="price">{{formatCurrency this.total}}</td>
+                        </tr>
+                        {{/each}}
+                    </tbody>
+                </table>
+            </div>
+            
+            <div class="total-section">
+                <div class="subtotal">
+                    <div class="subtotal-label">Subtotal:</div>
+                    <div class="subtotal-value">{{formatCurrency estimate.subtotal}}</div>
+                </div>
+                <div class="tax">
+                    <div class="tax-label">Tax ({{estimate.taxRate}}%):</div>
+                    <div class="tax-value">{{formatCurrency estimate.taxAmount}}</div>
+                </div>
+                <div class="total">
+                    <div class="total-label">TOTAL:</div>
+                    <div class="total-value">{{formatCurrency estimate.total}}</div>
+                </div>
+            </div>
+            
+            <div class="terms-section">
+                <h3 class="section-title">Terms and Conditions</h3>
+                <p>{{estimate.terms}}</p>
+                <p>This estimate is valid for 30 days from the date of issue.</p>
+                <p>Payment schedule:</p>
+                <ul>
+                    <li>50% deposit to begin work</li>
+                    <li>25% upon 50% completion</li>
+                    <li>25% upon project completion</li>
+                </ul>
+            </div>
+            
+            <div class="qr-code">
+                <img src="{{estimate.qrCodeUrl}}" alt="QR Code">
+                <p>Scan for project details</p>
+            </div>
+            
+            <div class="signature-section">
+                <div class="signature-box">
+                    <p>Client Signature</p>
+                    <p>Date: _________________</p>
+                </div>
+                <div class="signature-box">
+                    <p>Contractor Signature</p>
+                    <p>Date: _________________</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="footer">
+            <p>{{company.name}} | {{company.license}} | {{company.website}}</p>
+            <p>Generated on {{metadata.generatedDate}} | Template: {{metadata.templateName}}</p>
+        </div>
+    </div>
+</body>
+</html>

@@ -1,0 +1,713 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Presupuesto - {{estimate.projectName}}</title>
+    <style>
+        :root {
+            --primary-color: {{templateConfig.primaryColor}};
+            --secondary-color: {{templateConfig.secondaryColor}};
+            --accent-color: {{templateConfig.accentColor}};
+            --font-family: {{templateConfig.fontFamily}};
+        }
+        
+        body {
+            font-family: var(--font-family);
+            margin: 0;
+            padding: 0;
+            color: #333;
+            line-height: 1.6;
+            background-color: #f8f8f8;
+        }
+        
+        .container {
+            max-width: 800px;
+            margin: 20px auto;
+            padding: 0;
+            background-color: white;
+            box-shadow: 0 4px 30px rgba(0,0,0,0.1);
+            position: relative;
+            overflow: hidden;
+            width: 95%; /* Added for better mobile display */
+        }
+        
+        .border-decoration {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            pointer-events: none;
+            border: 12px solid transparent;
+            border-image: linear-gradient(45deg, var(--accent-color) 0%, var(--primary-color) 100%);
+            border-image-slice: 1;
+            z-index: 10;
+        }
+        
+        .header {
+            position: relative;
+            background-color: var(--primary-color);
+            color: white;
+            padding: 40px 20px; /* Adjusted padding for mobile */
+            text-align: center;
+            border-bottom: 3px solid var(--accent-color);
+        }
+        
+        .logo {
+            width: 120px; /* Reduced for mobile */
+            height: auto;
+            margin-bottom: 20px;
+            background: white;
+            padding: 10px;
+            border-radius: 50%;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+        }
+        
+        .company-name {
+            font-size: 28px; /* Reduced for mobile */
+            font-weight: bold;
+            margin-bottom: 5px;
+            text-transform: uppercase;
+            letter-spacing: 3px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+        }
+        
+        .company-contact {
+            font-size: 14px;
+            opacity: 0.9;
+            max-width: 500px;
+            margin: 0 auto;
+        }
+        
+        .estimate-title {
+            background-color: var(--secondary-color);
+            margin: 0;
+            padding: 20px 0;
+            text-align: center;
+            font-size: 24px;
+            font-weight: bold;
+            color: white;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            position: relative;
+        }
+        
+        .estimate-title::after {
+            content: '';
+            position: absolute;
+            bottom: -10px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 80%;
+            height: 1px;
+            background: linear-gradient(90deg, 
+                transparent 0%, 
+                var(--accent-color) 25%, 
+                var(--accent-color) 75%, 
+                transparent 100%);
+        }
+        
+        .content {
+            padding: 20px; /* Reduced for mobile */
+        }
+        
+        .client-project-info {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 40px;
+            gap: 20px; /* Reduced gap for mobile */
+            flex-direction: column; /* Stack vertically on mobile */
+        }
+        
+        @media (min-width: 768px) {
+            .client-project-info {
+                flex-direction: row; /* Side by side on larger screens */
+            }
+            
+            .content {
+                padding: 40px; /* Restore padding on larger screens */
+            }
+            
+            .header {
+                padding: 40px; /* Restore padding on larger screens */
+            }
+            
+            .logo {
+                width: 150px; /* Restore size on larger screens */
+            }
+            
+            .company-name {
+                font-size: 32px; /* Restore size on larger screens */
+            }
+        }
+        
+        .client-info, .project-info {
+            flex: 1;
+            padding: 20px; /* Reduced for mobile */
+            position: relative;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+        }
+        
+        .client-info::before, .project-info::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: linear-gradient(90deg, var(--primary-color), var(--accent-color));
+        }
+        
+        .section-title {
+            color: var(--primary-color);
+            font-size: 20px; /* Reduced for mobile */
+            margin-bottom: 20px;
+            position: relative;
+            padding-bottom: 10px;
+            text-align: center;
+            font-weight: bold;
+        }
+        
+        @media (min-width: 768px) {
+            .client-info, .project-info {
+                padding: 25px; /* Restore padding on larger screens */
+            }
+            
+            .section-title {
+                font-size: 22px; /* Restore size on larger screens */
+            }
+        }
+        
+        .section-title::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 60px;
+            height: 2px;
+            background-color: var(--accent-color);
+        }
+        
+        .info-row {
+            margin-bottom: 12px;
+            border-bottom: 1px dotted #eee;
+            padding-bottom: 8px;
+            display: flex;
+            flex-wrap: wrap; /* Allow wrapping on small screens */
+        }
+        
+        .info-row:last-child {
+            border-bottom: none;
+        }
+        
+        .info-label {
+            font-weight: bold;
+            color: var(--secondary-color);
+            width: 90px;
+            flex-shrink: 0;
+        }
+        
+        .materials-section, .labor-section {
+            margin-bottom: 40px;
+            overflow-x: auto; /* Enable horizontal scrolling for tables */
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+            min-width: 500px; /* Ensure tables don't get too small */
+        }
+        
+        th {
+            background-color: var(--primary-color);
+            color: white;
+            text-align: left;
+            padding: 12px 10px; /* Reduced for mobile */
+            font-weight: bold;
+            font-size: 13px; /* Reduced for mobile */
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        
+        @media (min-width: 768px) {
+            th {
+                padding: 15px; /* Restore padding on larger screens */
+                font-size: 14px; /* Restore size on larger screens */
+            }
+        }
+        
+        th:first-child {
+            border-top-left-radius: 8px;
+        }
+        
+        th:last-child {
+            border-top-right-radius: 8px;
+        }
+        
+        td {
+            padding: 10px; /* Reduced for mobile */
+            border-bottom: 1px solid #eee;
+        }
+        
+        @media (min-width: 768px) {
+            td {
+                padding: 12px 15px; /* Restore padding on larger screens */
+            }
+        }
+        
+        tr:last-child td {
+            border-bottom: none;
+        }
+        
+        tr:last-child td:first-child {
+            border-bottom-left-radius: 8px;
+        }
+        
+        tr:last-child td:last-child {
+            border-bottom-right-radius: 8px;
+        }
+        
+        tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+        
+        .price {
+            text-align: right;
+            font-weight: bold;
+            font-family: var(--font-family);
+            color: var(--secondary-color);
+        }
+        
+        .total-section {
+            margin-top: 40px;
+            border: 1px solid #eee;
+            padding: 20px; /* Reduced for mobile */
+            background-color: #f9f9f9;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+            position: relative;
+        }
+        
+        @media (min-width: 768px) {
+            .total-section {
+                padding: 25px; /* Restore padding on larger screens */
+            }
+        }
+        
+        .total-section::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: linear-gradient(90deg, var(--primary-color), var(--accent-color));
+        }
+        
+        .subtotal, .tax, .total {
+            display: flex;
+            justify-content: flex-end;
+            margin-bottom: 10px;
+            font-size: 16px;
+            flex-wrap: wrap; /* Allow wrapping on small screens */
+        }
+        
+        .total {
+            font-size: 20px; /* Reduced for mobile */
+            font-weight: bold;
+            color: var(--primary-color);
+            border-top: 2px solid var(--accent-color);
+            padding-top: 15px;
+            margin-top: 15px;
+        }
+        
+        @media (min-width: 768px) {
+            .total {
+                font-size: 24px; /* Restore size on larger screens */
+            }
+        }
+        
+        .total-label, .subtotal-label, .tax-label {
+            width: 150px; /* Reduced for mobile */
+            margin-right: 20px;
+            text-align: right;
+        }
+        
+        @media (min-width: 768px) {
+            .total-label, .subtotal-label, .tax-label {
+                width: 200px; /* Restore width on larger screens */
+            }
+        }
+        
+        .signature-section {
+            margin-top: 50px;
+            display: flex;
+            justify-content: space-between;
+            flex-direction: column; /* Stack vertically on mobile */
+            gap: 20px;
+        }
+        
+        @media (min-width: 768px) {
+            .signature-section {
+                flex-direction: row; /* Side by side on larger screens */
+                gap: 0;
+            }
+        }
+        
+        .signature-box {
+            width: 100%; /* Full width on mobile */
+            padding: 20px;
+            border: 1px solid #eee;
+            text-align: center;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+        }
+        
+        @media (min-width: 768px) {
+            .signature-box {
+                width: 45%; /* Return to 45% on larger screens */
+            }
+        }
+        
+        .terms-section {
+            margin-top: 50px;
+            padding: 20px; /* Reduced for mobile */
+            background-color: #f9f9f9;
+            position: relative;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+        }
+        
+        @media (min-width: 768px) {
+            .terms-section {
+                padding: 25px; /* Restore padding on larger screens */
+            }
+        }
+        
+        .terms-section::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: linear-gradient(90deg, var(--primary-color), var(--accent-color));
+        }
+        
+        .footer {
+            background-color: var(--primary-color);
+            color: white;
+            padding: 25px;
+            text-align: center;
+            margin-top: 50px;
+        }
+        
+        .qr-code {
+            text-align: center;
+            margin: 40px 0;
+        }
+        
+        .qr-code img {
+            width: 100px; /* Reduced for mobile */
+            height: 100px;
+            background: white;
+            padding: 10px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+        
+        @media (min-width: 768px) {
+            .qr-code img {
+                width: 120px; /* Restore size on larger screens */
+                height: 120px;
+            }
+        }
+        
+        .divider {
+            position: relative;
+            height: 30px;
+            margin: 30px 0;
+            text-align: center;
+        }
+        
+        .divider::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 0;
+            right: 0;
+            height: 1px;
+            background: linear-gradient(90deg, 
+                transparent 0%, 
+                var(--accent-color) 25%, 
+                var(--accent-color) 75%, 
+                transparent 100%);
+        }
+        
+        .divider-icon {
+            position: relative;
+            display: inline-block;
+            width: 30px;
+            height: 30px;
+            background-color: white;
+            border-radius: 50%;
+            border: 1px solid var(--accent-color);
+            z-index: 1;
+        }
+        
+        .divider-icon::before, .divider-icon::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: var(--accent-color);
+        }
+        
+        .divider-icon::before {
+            width: 60%;
+            height: 2px;
+        }
+        
+        .divider-icon::after {
+            width: 2px;
+            height: 60%;
+        }
+        
+        .stamp {
+            position: absolute;
+            top: 30%;
+            right: 5%;
+            transform: rotate(15deg);
+            z-index: 5;
+            opacity: 0.4;
+            display: none; /* Hide on mobile */
+        }
+        
+        @media (min-width: 768px) {
+            .stamp {
+                display: block; /* Show on larger screens */
+            }
+        }
+        
+        .stamp-content {
+            width: 150px;
+            height: 150px;
+            border: 5px solid var(--accent-color);
+            border-radius: 50%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            font-weight: bold;
+            color: var(--accent-color);
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            text-align: center;
+            line-height: 1.2;
+        }
+        
+        /* Print styles */
+        @media print {
+            body {
+                background-color: white;
+            }
+            
+            .container {
+                margin: 0;
+                width: 100%;
+                max-width: none;
+                box-shadow: none;
+            }
+            
+            .border-decoration {
+                display: block !important;
+            }
+            
+            .stamp {
+                display: block !important;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="border-decoration"></div>
+        
+        <div class="header">
+            {{#if company.logoUrl}}
+            <img src="{{company.logoUrl}}" alt="{{company.name}} Logo" class="logo">
+            {{/if}}
+            
+            <div class="company-name">{{company.name}}</div>
+            <div class="company-contact">
+                {{company.address}} · {{company.city}}, {{company.state}} {{company.zipCode}}<br>
+                Tel: {{company.phone}} · Email: {{company.email}}
+            </div>
+        </div>
+        
+        <div class="estimate-title">
+            Presupuesto #{{estimate.estimateNumber}}
+        </div>
+        
+        <div class="content">
+            <div class="client-project-info">
+                <div class="client-info">
+                    <h3 class="section-title">Información del Cliente</h3>
+                    <div class="info-row">
+                        <span class="info-label">Nombre:</span> {{client.name}}
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Dirección:</span> {{client.address}}
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Ciudad:</span> {{client.city}}, {{client.state}} {{client.zipCode}}
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Teléfono:</span> {{client.phone}}
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Email:</span> {{client.email}}
+                    </div>
+                </div>
+                
+                <div class="project-info">
+                    <h3 class="section-title">Información del Proyecto</h3>
+                    <div class="info-row">
+                        <span class="info-label">Nombre:</span> {{estimate.projectName}}
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Ubicación:</span> {{estimate.projectLocation}}
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Fecha:</span> {{formatDate estimate.estimateDate}}
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Válido:</span> {{formatDate estimate.validUntil}}
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Consultor:</span> {{estimate.consultant}}
+                    </div>
+                </div>
+            </div>
+            
+            <div class="divider">
+                <div class="divider-icon"></div>
+            </div>
+            
+            <div class="materials-section">
+                <h3 class="section-title">Materiales</h3>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Descripción</th>
+                            <th>Cantidad</th>
+                            <th>Unidad</th>
+                            <th>Precio Unitario</th>
+                            <th>Total</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {{#each estimate.materials}}
+                        <tr>
+                            <td>{{this.description}}</td>
+                            <td>{{this.quantity}}</td>
+                            <td>{{this.unit}}</td>
+                            <td class="price">{{formatCurrency this.unitPrice}}</td>
+                            <td class="price">{{formatCurrency this.total}}</td>
+                        </tr>
+                        {{/each}}
+                    </tbody>
+                </table>
+            </div>
+            
+            <div class="labor-section">
+                <h3 class="section-title">Mano de Obra</h3>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Descripción</th>
+                            <th>Horas</th>
+                            <th>Tarifa</th>
+                            <th>Total</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {{#each estimate.labor}}
+                        <tr>
+                            <td>{{this.description}}</td>
+                            <td>{{this.hours}}</td>
+                            <td class="price">{{formatCurrency this.rate}}</td>
+                            <td class="price">{{formatCurrency this.total}}</td>
+                        </tr>
+                        {{/each}}
+                    </tbody>
+                </table>
+            </div>
+            
+            <div class="divider">
+                <div class="divider-icon"></div>
+            </div>
+            
+            <div class="total-section">
+                <div class="subtotal">
+                    <div class="subtotal-label">Subtotal:</div>
+                    <div class="subtotal-value">{{formatCurrency estimate.subtotal}}</div>
+                </div>
+                <div class="tax">
+                    <div class="tax-label">Impuestos ({{estimate.taxRate}}%):</div>
+                    <div class="tax-value">{{formatCurrency estimate.taxAmount}}</div>
+                </div>
+                <div class="total">
+                    <div class="total-label">TOTAL:</div>
+                    <div class="total-value">{{formatCurrency estimate.total}}</div>
+                </div>
+            </div>
+            
+            <div class="terms-section">
+                <h3 class="section-title">Términos y Condiciones</h3>
+                <p>{{estimate.terms}}</p>
+                <p>Este presupuesto es válido por 30 días a partir de la fecha de emisión.</p>
+                <p>El pago se realizará según el siguiente calendario:</p>
+                <ul>
+                    <li>50% al inicio del proyecto</li>
+                    <li>25% al completar el 50% del trabajo</li>
+                    <li>25% al finalizar el proyecto</li>
+                </ul>
+            </div>
+            
+            <div class="qr-code">
+                <img src="{{estimate.qrCodeUrl}}" alt="QR Code">
+                <p>Escanea para ver detalles del proyecto</p>
+            </div>
+            
+            <div class="signature-section">
+                <div class="signature-box">
+                    <p>Firma del Cliente</p>
+                    <p>Fecha: _________________</p>
+                </div>
+                <div class="signature-box">
+                    <p>Firma del Contratista</p>
+                    <p>Fecha: _________________</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="footer">
+            <p>{{company.name}} | {{company.license}} | {{company.website}}</p>
+            <p>Generado el {{metadata.generatedDate}} | Template: {{metadata.templateName}}</p>
+        </div>
+        
+        {{#if estimate.approved}}
+        <div class="stamp">
+            <div class="stamp-content">
+                Aprobado<br>
+                <small>{{formatDate estimate.approvedDate}}</small>
+            </div>
+        </div>
+        {{/if}}
+    </div>
+</body>
+</html>

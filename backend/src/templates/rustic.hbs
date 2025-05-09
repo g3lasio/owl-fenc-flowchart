@@ -1,0 +1,491 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Presupuesto - {{estimate.projectName}}</title>
+    <style>
+        :root {
+            --primary-color: {{templateConfig.primaryColor}};
+            --secondary-color: {{templateConfig.secondaryColor}};
+            --accent-color: {{templateConfig.accentColor}};
+            --font-family: {{templateConfig.fontFamily}};
+        }
+        
+        body {
+            font-family: var(--font-family);
+            margin: 0;
+            padding: 0;
+            color: #333;
+            line-height: 1.6;
+            background-color: #f9f6f1;
+            background-image: url('data:image/svg+xml,%3Csvg width="100" height="100" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"%3E%3Cg fill="%239C92AC" fill-opacity="0.04"%3E%3Cpath d="M11 18c3.866 0 7-3.134 7-7s-3.134-7-7-7-7 3.134-7 7 3.134 7 7 7zm48 25c3.866 0 7-3.134 7-7s-3.134-7-7-7-7 3.134-7 7 3.134 7 7 7zm-43-7c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zm63 31c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zM34 90c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zm56-76c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zM12 86c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm28-65c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm23-11c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zm-6 60c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm29 22c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zM32 63c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zm57-13c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zm-9-21c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2zM60 91c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2zM35 41c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2zM12 60c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2z"%3E%3C/path%3E%3C/g%3E%3C/svg%3E');
+        }
+        
+        .container {
+            max-width: 800px;
+            margin: 20px auto;
+            padding: 0;
+            background-color: #fff;
+            border: 1px solid #ddd;
+            box-shadow: 0 0 15px rgba(0,0,0,0.1);
+            position: relative;
+        }
+        
+        .decorative-border {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 10px;
+            background: repeating-linear-gradient(
+                -45deg,
+                var(--primary-color),
+                var(--primary-color) 10px,
+                var(--secondary-color) 10px,
+                var(--secondary-color) 20px
+            );
+        }
+        
+        .header {
+            background-color: var(--primary-color);
+            color: #fff;
+            padding: 30px;
+            position: relative;
+            border-bottom: 4px solid var(--accent-color);
+        }
+        
+        .header::after {
+            content: '';
+            position: absolute;
+            bottom: -14px;
+            left: 0;
+            width: 100%;
+            height: 10px;
+            background-image: url('data:image/svg+xml,%3Csvg width="20" height="20" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"%3E%3Cpath d="M0 10 L10 0 L20 10 L0 10" fill="%23' + var(--accent-color).substring(1) + '"%3E%3C/path%3E%3C/svg%3E');
+            background-repeat: repeat-x;
+        }
+        
+        .header-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .logo {
+            width: 140px;
+            height: auto;
+            padding: 10px;
+            background: white;
+            border: 2px solid var(--accent-color);
+        }
+        
+        .company-info {
+            text-align: right;
+        }
+        
+        .company-name {
+            font-size: 24px;
+            font-weight: bold;
+            margin-bottom: 5px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        
+        .company-contact {
+            font-size: 14px;
+            line-height: 1.6;
+        }
+        
+        .estimate-title {
+            text-align: center;
+            margin: 30px 0 20px;
+            position: relative;
+        }
+        
+        .estimate-title h1 {
+            display: inline-block;
+            position: relative;
+            font-size: 28px;
+            color: var(--primary-color);
+            margin: 0;
+            padding: 0 20px;
+            background: #fff;
+            z-index: 1;
+        }
+        
+        .estimate-title::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background-color: var(--accent-color);
+            z-index: 0;
+        }
+        
+        .content {
+            padding: 20px 30px;
+        }
+        
+        .client-project-info {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 30px;
+        }
+        
+        .client-info, .project-info {
+            flex: 1;
+            padding: 15px;
+            background: #f9f6f1;
+            border: 1px solid #e0d5c7;
+            border-radius: 5px;
+            margin: 0 10px;
+        }
+        
+        .section-title {
+            font-size: 20px;
+            color: var(--primary-color);
+            margin-bottom: 15px;
+            font-weight: bold;
+            border-bottom: 2px solid var(--accent-color);
+            padding-bottom: 5px;
+            display: inline-block;
+        }
+        
+        .info-row {
+            margin-bottom: 10px;
+        }
+        
+        .info-label {
+            font-weight: bold;
+            color: var(--secondary-color);
+        }
+        
+        .materials-section, .labor-section {
+            margin-bottom: 30px;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+            border: 2px solid var(--primary-color);
+        }
+        
+        th {
+            background-color: var(--primary-color);
+            color: white;
+            text-align: left;
+            padding: 12px;
+            font-weight: bold;
+        }
+        
+        td {
+            padding: 10px 12px;
+            border-bottom: 1px solid #e0d5c7;
+            background-color: #fff;
+        }
+        
+        tr:nth-child(even) td {
+            background-color: #f9f6f1;
+        }
+        
+        tr:last-child td {
+            border-bottom: none;
+        }
+        
+        .price {
+            text-align: right;
+            font-weight: bold;
+            font-family: 'Courier New', monospace;
+        }
+        
+        .total-section {
+            margin-top: 30px;
+            border: 2px solid var(--accent-color);
+            padding: 20px;
+            background-color: #f9f6f1;
+            position: relative;
+        }
+        
+        .total-section::before {
+            content: 'RESUMEN';
+            position: absolute;
+            top: -12px;
+            left: 20px;
+            background: #f9f6f1;
+            padding: 0 10px;
+            font-size: 16px;
+            font-weight: bold;
+            color: var(--primary-color);
+        }
+        
+        .subtotal, .tax, .total {
+            display: flex;
+            justify-content: flex-end;
+            margin-bottom: 8px;
+            font-family: 'Courier New', monospace;
+        }
+        
+        .total {
+            font-size: 22px;
+            font-weight: bold;
+            color: var(--primary-color);
+            border-top: 2px solid var(--primary-color);
+            padding-top: 10px;
+            margin-top: 10px;
+        }
+        
+        .total-label, .subtotal-label, .tax-label {
+            width: 150px;
+            margin-right: 20px;
+            text-align: right;
+        }
+        
+        .signature-section {
+            margin-top: 40px;
+            display: flex;
+            justify-content: space-between;
+        }
+        
+        .signature-box {
+            width: 45%;
+            padding-top: 20px;
+            border-top: 1px solid #999;
+            text-align: center;
+        }
+        
+        .terms-section {
+            margin-top: 40px;
+            padding: 20px;
+            background-color: #f9f6f1;
+            border: 1px solid #e0d5c7;
+            position: relative;
+            margin-bottom: 20px;
+        }
+        
+        .terms-section::before {
+            content: 'TÉRMINOS Y CONDICIONES';
+            position: absolute;
+            top: -12px;
+            left: 20px;
+            background: #f9f6f1;
+            padding: 0 10px;
+            font-size: 16px;
+            font-weight: bold;
+            color: var(--primary-color);
+        }
+        
+        .qr-code {
+            text-align: center;
+            margin: 30px 0;
+        }
+        
+        .qr-code img {
+            width: 120px;
+            height: 120px;
+            padding: 5px;
+            border: 1px solid #e0d5c7;
+            background: white;
+        }
+        
+        .footer {
+            border-top: 1px solid #e0d5c7;
+            padding: 20px;
+            text-align: center;
+            font-size: 12px;
+            color: #777;
+            background-color: #f9f6f1;
+        }
+        
+        .stamp {
+            position: absolute;
+            top: 30px;
+            right: 50px;
+            transform: rotate(15deg);
+            font-size: 24px;
+            font-weight: bold;
+            color: var(--accent-color);
+            border: 3px solid var(--accent-color);
+            padding: 10px;
+            border-radius: 8px;
+            opacity: 0.8;
+            text-transform: uppercase;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="decorative-border"></div>
+        
+        <div class="header">
+            <div class="header-content">
+                {{#if company.logoUrl}}
+                <img src="{{company.logoUrl}}" alt="{{company.name}} Logo" class="logo">
+                {{else}}
+                <div class="company-name">{{company.name}}</div>
+                {{/if}}
+                
+                <div class="company-info">
+                    <div class="company-name">{{company.name}}</div>
+                    <div class="company-contact">
+                        {{company.address}}<br>
+                        {{company.city}}, {{company.state}} {{company.zipCode}}<br>
+                        Tel: {{company.phone}}<br>
+                        {{company.email}}
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="estimate-title">
+            <h1>Presupuesto #{{estimate.estimateNumber}}</h1>
+        </div>
+        
+        <div class="content">
+            <div class="client-project-info">
+                <div class="client-info">
+                    <h3 class="section-title">Información del Cliente</h3>
+                    <div class="info-row">
+                        <span class="info-label">Nombre:</span> {{client.name}}
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Dirección:</span> {{client.address}}
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Ciudad:</span> {{client.city}}, {{client.state}} {{client.zipCode}}
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Teléfono:</span> {{client.phone}}
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Email:</span> {{client.email}}
+                    </div>
+                </div>
+                
+                <div class="project-info">
+                    <h3 class="section-title">Información del Proyecto</h3>
+                    <div class="info-row">
+                        <span class="info-label">Nombre:</span> {{estimate.projectName}}
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Ubicación:</span> {{estimate.projectLocation}}
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Fecha:</span> {{formatDate estimate.estimateDate}}
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Válido hasta:</span> {{formatDate estimate.validUntil}}
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Consultor:</span> {{estimate.consultant}}
+                    </div>
+                </div>
+            </div>
+            
+            <div class="materials-section">
+                <h3 class="section-title">Materiales</h3>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Descripción</th>
+                            <th>Cantidad</th>
+                            <th>Unidad</th>
+                            <th>Precio Unitario</th>
+                            <th>Total</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {{#each estimate.materials}}
+                        <tr>
+                            <td>{{this.description}}</td>
+                            <td>{{this.quantity}}</td>
+                            <td>{{this.unit}}</td>
+                            <td class="price">{{formatCurrency this.unitPrice}}</td>
+                            <td class="price">{{formatCurrency this.total}}</td>
+                        </tr>
+                        {{/each}}
+                    </tbody>
+                </table>
+            </div>
+            
+            <div class="labor-section">
+                <h3 class="section-title">Mano de Obra</h3>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Descripción</th>
+                            <th>Horas</th>
+                            <th>Tarifa</th>
+                            <th>Total</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {{#each estimate.labor}}
+                        <tr>
+                            <td>{{this.description}}</td>
+                            <td>{{this.hours}}</td>
+                            <td class="price">{{formatCurrency this.rate}}</td>
+                            <td class="price">{{formatCurrency this.total}}</td>
+                        </tr>
+                        {{/each}}
+                    </tbody>
+                </table>
+            </div>
+            
+            <div class="total-section">
+                <div class="subtotal">
+                    <div class="subtotal-label">Subtotal:</div>
+                    <div class="subtotal-value">{{formatCurrency estimate.subtotal}}</div>
+                </div>
+                <div class="tax">
+                    <div class="tax-label">Impuestos ({{estimate.taxRate}}%):</div>
+                    <div class="tax-value">{{formatCurrency estimate.taxAmount}}</div>
+                </div>
+                <div class="total">
+                    <div class="total-label">TOTAL:</div>
+                    <div class="total-value">{{formatCurrency estimate.total}}</div>
+                </div>
+            </div>
+            
+            <div class="terms-section">
+                <p>{{estimate.terms}}</p>
+                <p>Este presupuesto es válido por 30 días a partir de la fecha de emisión.</p>
+                <p>El pago se realizará según el siguiente calendario:</p>
+                <ul>
+                    <li>50% al inicio del proyecto</li>
+                    <li>25% al completar el 50% del trabajo</li>
+                    <li>25% al finalizar el proyecto</li>
+                </ul>
+            </div>
+            
+            <div class="signature-section">
+                <div class="signature-box">
+                    <p>Firma del Cliente</p>
+                    <p>Fecha: _________________</p>
+                </div>
+                <div class="signature-box">
+                    <p>Firma del Contratista</p>
+                    <p>Fecha: _________________</p>
+                </div>
+            </div>
+            
+            <div class="qr-code">
+                <img src="{{estimate.qrCodeUrl}}" alt="QR Code">
+                <p>Escanea para ver detalles del proyecto</p>
+            </div>
+        </div>
+        
+        <div class="footer">
+            <p>{{company.name}} | {{company.license}} | {{company.website}}</p>
+            <p>Generado el {{metadata.generatedDate}} | Template: {{metadata.templateName}}</p>
+        </div>
+        
+        {{#if estimate.approved}}
+        <div class="stamp">Aprobado</div>
+        {{/if}}
+    </div>
+</body>
+</html>

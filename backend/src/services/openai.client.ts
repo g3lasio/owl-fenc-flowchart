@@ -18,7 +18,7 @@ export class OpenAIClient {
     this.apiKey = apiKey || config.openai.apiKey || '';
     this.maxRetries = config.openai.maxRetries;
     this.retryDelay = config.openai.retryDelay;
-    this.defaultModel = config.openai.model;
+    this.defaultModel = config.openai.completionModel;
     this.defaultTemperature = config.openai.temperature;
     
     // Inicializar o usar servicio de monitoreo proporcionado
