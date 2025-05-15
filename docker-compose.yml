@@ -1,0 +1,203 @@
+version: '3.8'
+
+services:
+  # Message broker (RabbitMQ)
+  rabbitmq:
+    image: rabbitmq:3.11-management-alpine
+    container_name: owl-fenc-rabbitmq
+    ports:
+      - "5672:5672"   # AMQP protocol
+      - "15672:15672" # Management interface
+    environment:
+      - RABBITMQ_DEFAULT_USER=owl_fenc
+      - RABBITMQ_DEFAULT_PASS=${RABBITMQ_PASSWORD:-owlfenc123}
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "check_port_connectivity"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    networks:
+      - owl_network
+
+  # API Gateway Service
+  api-gateway:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.base
+    container_name: owl-fenc-api-gateway
+    restart: always
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - RABBITMQ_URL=amqp://owl_fenc:${RABBITMQ_PASSWORD:-owlfenc123}@rabbitmq:5672
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - MISTRAL_API_KEY=${MISTRAL_API_KEY}
+      - SERVICE_TYPE=api-gateway
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    command: node dist/server.js
+    networks:
+      - owl_network
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.api-gateway.rule=Host(`api.owlfenc.com`)"
+      - "traefik.http.routers.api-gateway.entrypoints=websecure"
+      - "traefik.http.routers.api-gateway.tls=true"
+      - "traefik.http.services.api-gateway.loadbalancer.server.port=3000"
+      - "traefik.http.middlewares.api-gateway-security.chain.middlewares=secureHeaders,apiRateLimit"
+
+  # DeepSearch Engine Service
+  deepsearch-engine:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.deepsearch
+    container_name: owl-fenc-deepsearch
+    restart: always
+    environment:
+      - NODE_ENV=production
+      - RABBITMQ_URL=amqp://owl_fenc:${RABBITMQ_PASSWORD:-owlfenc123}@rabbitmq:5672
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - MISTRAL_API_KEY=${MISTRAL_API_KEY}
+      - CACHE_PATH=/app/cache
+      - SERVICE_NAME=deepsearch-engine-service
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    volumes:
+      - deepsearch_cache:/app/cache
+    healthcheck:
+      test: ["CMD", "node", "-e", "console.log('DeepSearch health check')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    networks:
+      - owl_network
+
+  # Unstructured Input Service
+  unstructured-input:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.unstructured-input
+    container_name: owl-fenc-unstructured-input
+    restart: always
+    environment:
+      - NODE_ENV=production
+      - RABBITMQ_URL=amqp://owl_fenc:${RABBITMQ_PASSWORD:-owlfenc123}@rabbitmq:5672
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - MISTRAL_API_KEY=${MISTRAL_API_KEY}
+      - CACHE_PATH=/app/cache
+      - SERVICE_NAME=unstructured-input-service
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    volumes:
+      - unstructured_cache:/app/cache
+    healthcheck:
+      test: ["CMD", "node", "-e", "console.log('Unstructured Input health check')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    networks:
+      - owl_network
+
+  # Error Handler Service
+  error-handler:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.error-handler
+    container_name: owl-fenc-error-handler
+    restart: always
+    environment:
+      - NODE_ENV=production
+      - RABBITMQ_URL=amqp://owl_fenc:${RABBITMQ_PASSWORD:-owlfenc123}@rabbitmq:5672
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - SERVICE_NAME=error-handler-service
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "node", "-e", "console.log('Error Handler health check')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    networks:
+      - owl_network
+
+  # Adaptive Learning Service
+  adaptive-learning:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.base
+    container_name: owl-fenc-adaptive-learning
+    restart: always
+    environment:
+      - NODE_ENV=production
+      - RABBITMQ_URL=amqp://owl_fenc:${RABBITMQ_PASSWORD:-owlfenc123}@rabbitmq:5672
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - CACHE_PATH=/app/cache
+      - SERVICE_NAME=adaptive-learning-service
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    volumes:
+      - adaptive_cache:/app/cache
+    command: node dist/microservice-runner.js adaptive-learning
+    healthcheck:
+      test: ["CMD", "node", "-e", "console.log('Adaptive Learning health check')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    networks:
+      - owl_network
+
+  # MongoDB for persistent storage
+  mongodb:
+    image: mongo:6.0
+    container_name: owl-fenc-mongodb
+    restart: always
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=owl_fenc
+      - MONGO_INITDB_ROOT_PASSWORD=${MONGO_PASSWORD:-mongopw123}
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_data:/data/db
+    healthcheck:
+      test: echo 'db.runCommand("ping").ok' | mongosh localhost:27017/admin -u owl_fenc -p ${MONGO_PASSWORD:-mongopw123} --quiet
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    networks:
+      - owl_network
+
+volumes:
+  rabbitmq_data:
+  mongodb_data:
+  deepsearch_cache:
+  unstructured_cache:
+  adaptive_cache:
+
+networks:
+  owl_network:
+    driver: bridge

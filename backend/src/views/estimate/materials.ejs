@@ -1,0 +1,590 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title><%= title %></title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'Arial', sans-serif;
+      padding-top: 20px;
+    }
+    .table-responsive {
+      margin-bottom: 30px;
+    }
+    .step-indicator {
+      display: flex;
+      justify-content: center;
+      margin-bottom: 30px;
+    }
+    .step {
+      width: 30px;
+      height: 30px;
+      border-radius: 50%;
+      background-color: #e9ecef;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 10px;
+      font-weight: bold;
+    }
+    .step.active {
+      background-color: #4a6741;
+      color: white;
+    }
+    .step-line {
+      height: 3px;
+      width: 50px;
+      background-color: #e9ecef;
+      margin-top: 15px;
+    }
+    .editable-cell input {
+      width: 100%;
+      border: 1px solid #ced4da;
+      border-radius: 4px;
+      padding: 5px;
+    }
+    .summary-card {
+      border-left: 4px solid #4a6741;
+    }
+    .highlight-change {
+      background-color: #fffce6;
+      transition: background-color 0.5s;
+    }
+    .material-note {
+      font-size: 0.85rem;
+      color: #666;
+      margin-top: 5px;
+    }
+    .help-icon {
+      color: #4a6741;
+      cursor: pointer;
+    }
+    .history-tooltip {
+      display: none;
+      position: absolute;
+      background: white;
+      border: 1px solid #ddd;
+      padding: 10px;
+      border-radius: 4px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+      z-index: 1000;
+      max-width: 250px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1 class="text-center mb-4"><%= title %></h1>
+    
+    <div class="step-indicator">
+      <div class="step">1</div>
+      <div class="step-line"></div>
+      <div class="step">2</div>
+      <div class="step-line"></div>
+      <div class="step">3</div>
+      <div class="step-line"></div>
+      <div class="step">4</div>
+      <div class="step-line"></div>
+      <div class="step active">5</div>
+      <div class="step-line"></div>
+      <div class="step">6</div>
+    </div>
+    
+    <div class="row justify-content-center mb-4">
+      <div class="col-md-10">
+        <div class="alert alert-primary">
+          <p class="mb-0">Revisa y ajusta los materiales y precios generados. Puedes modificar cantidades, precios unitarios o agregar nuevos materiales según sea necesario.</p>
+        </div>
+      </div>
+    </div>
+    
+    <form action="/estimate/materials" method="POST">
+      <input type="hidden" name="sessionId" value="<%= sessionId %>">
+      
+      <div class="row">
+        <div class="col-md-8">
+          <!-- Tabla de materiales -->
+          <h3>Materiales</h3>
+          <div class="table-responsive">
+            <table class="table table-striped table-hover" id="materialsTable">
+              <thead>
+                <tr>
+                  <th>Material</th>
+                  <th>Cantidad</th>
+                  <th>Unidad</th>
+                  <th>Precio Unitario</th>
+                  <th>Total</th>
+                  <th>Aprendizaje <i class="bi bi-question-circle help-icon" title="Historiales y sugerencias de precios"></i></th>
+                </tr>
+              </thead>
+              <tbody>
+                <% materials.forEach((material, index) => { %>
+                  <tr data-id="<%= material.id %>">
+                    <td>
+                      <input type="hidden" name="materials[<%= index %>][id]" value="<%= material.id %>">
+                      <input type="text" class="form-control" name="materials[<%= index %>][name]" value="<%= material.name %>">
+                    </td>
+                    <td class="editable-cell">
+                      <input type="number" class="form-control quantity-input" name="materials[<%= index %>][quantity]" value="<%= material.quantity %>" step="0.01" min="0">
+                    </td>
+                    <td>
+                      <input type="text" class="form-control" name="materials[<%= index %>][unit]" value="<%= material.unit %>">
+                    </td>
+                    <td class="editable-cell">
+                      <input type="number" class="form-control price-input" name="materials[<%= index %>][unitPrice]" value="<%= material.unitPrice %>" step="0.01" min="0">
+                    </td>
+                    <td class="total-cell">$<span class="item-total"><%= (material.quantity * material.unitPrice).toFixed(2) %></span></td>
+                    <td>
+                      <button type="button" class="btn btn-sm btn-outline-info show-history" data-material-id="<%= material.id %>">
+                        <i class="bi bi-graph-up"></i>
+                      </button>
+                      <div class="history-tooltip" id="history-<%= material.id %>">
+                        <% if (material.priceHistory && material.priceHistory.length > 0) { %>
+                          <p><strong>Historial de precios:</strong></p>
+                          <ul class="small">
+                            <% material.priceHistory.forEach(record => { %>
+                              <li><%= record.date %>: $<%= record.price %></li>
+                            <% }); %>
+                          </ul>
+                        <% } else { %>
+                          <p>No hay historial de precios disponible.</p>
+                        <% } %>
+                        <% if (material.suggestedPrice) { %>
+                          <p><strong>Sugerencia:</strong> $<%= material.suggestedPrice %></p>
+                        <% } %>
+                      </div>
+                    </td>
+                  </tr>
+                  <% if (material.note) { %>
+                    <tr class="material-note-row">
+                      <td colspan="6" class="material-note">
+                        <i class="bi bi-info-circle"></i> <%= material.note %>
+                      </td>
+                    </tr>
+                  <% } %>
+                <% }); %>
+              </tbody>
+              <tfoot>
+                <tr>
+                  <td colspan="6">
+                    <button type="button" id="addMaterial" class="btn btn-sm btn-success">
+                      <i class="bi bi-plus-circle"></i> Agregar material
+                    </button>
+                  </td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+          
+          <!-- Tabla de mano de obra -->
+          <h3>Mano de Obra</h3>
+          <div class="table-responsive">
+            <table class="table table-striped table-hover" id="laborTable">
+              <thead>
+                <tr>
+                  <th>Descripción</th>
+                  <th>Horas/Unidades</th>
+                  <th>Tarifa</th>
+                  <th>Total</th>
+                  <th>Aprendizaje</th>
+                </tr>
+              </thead>
+              <tbody>
+                <% labor.forEach((item, index) => { %>
+                  <tr>
+                    <td>
+                      <input type="hidden" name="labor[<%= index %>][id]" value="<%= item.id %>">
+                      <input type="text" class="form-control" name="labor[<%= index %>][description]" value="<%= item.description %>">
+                    </td>
+                    <td class="editable-cell">
+                      <input type="number" class="form-control quantity-input" name="labor[<%= index %>][hours]" value="<%= item.hours %>" step="0.5" min="0">
+                    </td>
+                    <td class="editable-cell">
+                      <input type="number" class="form-control price-input" name="labor[<%= index %>][rate]" value="<%= item.rate %>" step="0.01" min="0">
+                    </td>
+                    <td class="labor-total-cell">$<span class="labor-item-total"><%= (item.hours * item.rate).toFixed(2) %></span></td>
+                    <td>
+                      <button type="button" class="btn btn-sm btn-outline-info show-history" data-labor-id="<%= item.id %>">
+                        <i class="bi bi-graph-up"></i>
+                      </button>
+                      <div class="history-tooltip" id="labor-history-<%= item.id %>">
+                        <% if (item.rateHistory && item.rateHistory.length > 0) { %>
+                          <p><strong>Historial de tarifas:</strong></p>
+                          <ul class="small">
+                            <% item.rateHistory.forEach(record => { %>
+                              <li><%= record.date %>: $<%= record.rate %>/hr</li>
+                            <% }); %>
+                          </ul>
+                        <% } else { %>
+                          <p>No hay historial de tarifas disponible.</p>
+                        <% } %>
+                        <% if (item.suggestedRate) { %>
+                          <p><strong>Sugerencia:</strong> $<%= item.suggestedRate %>/hr</p>
+                        <% } %>
+                      </div>
+                    </td>
+                  </tr>
+                <% }); %>
+              </tbody>
+              <tfoot>
+                <tr>
+                  <td colspan="5">
+                    <button type="button" id="addLabor" class="btn btn-sm btn-success">
+                      <i class="bi bi-plus-circle"></i> Agregar mano de obra
+                    </button>
+                  </td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        </div>
+        
+        <div class="col-md-4">
+          <!-- Tarjeta de resumen -->
+          <div class="card shadow-sm summary-card mb-4">
+            <div class="card-header bg-light">
+              <h4 class="mb-0">Resumen del Estimado</h4>
+            </div>
+            <div class="card-body">
+              <table class="table table-sm">
+                <tr>
+                  <td>Materiales:</td>
+                  <td class="text-end">$<span id="materialTotal"><%= materialCost.toFixed(2) %></span></td>
+                </tr>
+                <tr>
+                  <td>Mano de obra:</td>
+                  <td class="text-end">$<span id="laborTotal"><%= laborCost.toFixed(2) %></span></td>
+                </tr>
+                <tr>
+                  <td>Subtotal:</td>
+                  <td class="text-end">$<span id="subtotal"><%= (materialCost + laborCost).toFixed(2) %></span></td>
+                </tr>
+                <tr>
+                  <td>
+                    Margen de ganancia:
+                    <div class="input-group input-group-sm mt-1">
+                      <input type="number" class="form-control" id="markupPercentage" name="markupPercentage" value="<%= markupPercentage %>" min="0" max="100" step="1">
+                      <span class="input-group-text">%</span>
+                    </div>
+                  </td>
+                  <td class="text-end">$<span id="markupAmount"><%= ((materialCost + laborCost) * (markupPercentage / 100)).toFixed(2) %></span></td>
+                </tr>
+                <tr class="fw-bold">
+                  <td>Total:</td>
+                  <td class="text-end">$<span id="grandTotal"><%= ((materialCost + laborCost) * (1 + markupPercentage / 100)).toFixed(2) %></span></td>
+                </tr>
+              </table>
+              
+              <div class="mb-3">
+                <label for="estimatedDays" class="form-label">Tiempo estimado (días):</label>
+                <input type="number" class="form-control" id="estimatedDays" name="estimatedDays" value="<%= estimatedDays %>" min="1" step="1">
+              </div>
+              
+              <div class="form-check mt-3 mb-3">
+                <input class="form-check-input" type="checkbox" id="sendLearningData" name="sendLearningData" checked>
+                <label class="form-check-label" for="sendLearningData">
+                  Contribuir con este estimado al sistema de aprendizaje
+                </label>
+                <small class="form-text text-muted d-block">
+                  Esto ayuda a Mervin a mejorar la precisión para futuros estimados similares.
+                </small>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Tarjeta de notas -->
+          <div class="card shadow-sm mb-4">
+            <div class="card-header bg-light">
+              <h4 class="mb-0">Notas adicionales</h4>
+            </div>
+            <div class="card-body">
+              <textarea class="form-control" name="notes" rows="4" placeholder="Agrega cualquier nota importante sobre este estimado..."><%= notes || '' %></textarea>
+            </div>
+          </div>
+          
+          <!-- Tarjeta de aprendizaje -->
+          <div class="card shadow-sm mb-4">
+            <div class="card-header bg-light d-flex justify-content-between align-items-center">
+              <h4 class="mb-0">Aprendizaje de Mervin</h4>
+              <i class="bi bi-lightbulb help-icon" title="Información sobre el aprendizaje de Mervin"></i>
+            </div>
+            <div class="card-body">
+              <p class="small">Mervin ha aprendido de <strong><%= learningStats.estimatesCount || 0 %></strong> estimados similares.</p>
+              
+              <div class="mb-2">
+                <div class="d-flex justify-content-between">
+                  <span>Precisión en materiales:</span>
+                  <span><%= learningStats.materialAccuracy || 'N/A' %>%</span>
+                </div>
+                <div class="progress" style="height: 5px;">
+                  <div class="progress-bar bg-success" style="width: <%= learningStats.materialAccuracy || 0 %>%"></div>
+                </div>
+              </div>
+              
+              <div class="mb-2">
+                <div class="d-flex justify-content-between">
+                  <span>Precisión en mano de obra:</span>
+                  <span><%= learningStats.laborAccuracy || 'N/A' %>%</span>
+                </div>
+                <div class="progress" style="height: 5px;">
+                  <div class="progress-bar bg-success" style="width: <%= learningStats.laborAccuracy || 0 %>%"></div>
+                </div>
+              </div>
+              
+              <div class="mb-3">
+                <div class="d-flex justify-content-between">
+                  <span>Precisión general:</span>
+                  <span><%= learningStats.overallAccuracy || 'N/A' %>%</span>
+                </div>
+                <div class="progress" style="height: 5px;">
+                  <div class="progress-bar bg-success" style="width: <%= learningStats.overallAccuracy || 0 %>%"></div>
+                </div>
+              </div>
+              
+              <p class="small text-muted">Con cada ajuste que realizas, Mervin aprende a ser más preciso para futuros estimados similares.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <div class="d-flex justify-content-between mt-4 mb-5">
+        <a href="/estimate/dimensions" class="btn btn-secondary">Atrás</a>
+        <button type="submit" class="btn btn-primary">Finalizar Estimado</button>
+      </div>
+    </form>
+  </div>
+  
+  <!-- Plantillas para nuevas filas -->
+  <template id="material-row-template">
+    <tr>
+      <td>
+        <input type="hidden" name="materials[INDEX][id]" value="new">
+        <input type="text" class="form-control" name="materials[INDEX][name]" placeholder="Nombre del material">
+      </td>
+      <td class="editable-cell">
+        <input type="number" class="form-control quantity-input" name="materials[INDEX][quantity]" value="1" step="0.01" min="0">
+      </td>
+      <td>
+        <input type="text" class="form-control" name="materials[INDEX][unit]" value="unidad">
+      </td>
+      <td class="editable-cell">
+        <input type="number" class="form-control price-input" name="materials[INDEX][unitPrice]" value="0" step="0.01" min="0">
+      </td>
+      <td class="total-cell">$<span class="item-total">0.00</span></td>
+      <td>
+        <button type="button" class="btn btn-sm btn-outline-danger remove-row">
+          <i class="bi bi-trash"></i>
+        </button>
+      </td>
+    </tr>
+  </template>
+  
+  <template id="labor-row-template">
+    <tr>
+      <td>
+        <input type="hidden" name="labor[INDEX][id]" value="new">
+        <input type="text" class="form-control" name="labor[INDEX][description]" placeholder="Descripción del trabajo">
+      </td>
+      <td class="editable-cell">
+        <input type="number" class="form-control quantity-input" name="labor[INDEX][hours]" value="1" step="0.5" min="0">
+      </td>
+      <td class="editable-cell">
+        <input type="number" class="form-control price-input" name="labor[INDEX][rate]" value="0" step="0.01" min="0">
+      </td>
+      <td class="labor-total-cell">$<span class="labor-item-total">0.00</span></td>
+      <td>
+        <button type="button" class="btn btn-sm btn-outline-danger remove-row">
+          <i class="bi bi-trash"></i>
+        </button>
+      </td>
+    </tr>
+  </template>
+  
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.8.1/font/bootstrap-icons.css">
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      // Variables para seguimiento
+      let materialRows = document.querySelectorAll('#materialsTable tbody tr:not(.material-note-row)').length;
+      let laborRows = document.querySelectorAll('#laborTable tbody tr').length;
+      
+      // Funciones para calcular totales
+      function calculateTotals() {
+        // Calcular totales de materiales
+        let materialTotal = 0;
+        document.querySelectorAll('#materialsTable .item-total').forEach(cell => {
+          materialTotal += parseFloat(cell.textContent);
+        });
+        
+        // Calcular totales de mano de obra
+        let laborTotal = 0;
+        document.querySelectorAll('#laborTable .labor-item-total').forEach(cell => {
+          laborTotal += parseFloat(cell.textContent);
+        });
+        
+        // Actualizar subtotal
+        const subtotal = materialTotal + laborTotal;
+        document.getElementById('materialTotal').textContent = materialTotal.toFixed(2);
+        document.getElementById('laborTotal').textContent = laborTotal.toFixed(2);
+        document.getElementById('subtotal').textContent = subtotal.toFixed(2);
+        
+        // Calcular margen y total
+        const markupPercentage = parseFloat(document.getElementById('markupPercentage').value);
+        const markupAmount = subtotal * (markupPercentage / 100);
+        const grandTotal = subtotal + markupAmount;
+        
+        document.getElementById('markupAmount').textContent = markupAmount.toFixed(2);
+        document.getElementById('grandTotal').textContent = grandTotal.toFixed(2);
+      }
+      
+      // Actualizar totales de línea cuando se cambian cantidades o precios
+      document.querySelectorAll('#materialsTable .quantity-input, #materialsTable .price-input').forEach(input => {
+        input.addEventListener('input', function() {
+          const row = this.closest('tr');
+          const quantity = parseFloat(row.querySelector('.quantity-input').value) || 0;
+          const price = parseFloat(row.querySelector('.price-input').value) || 0;
+          const total = quantity * price;
+          
+          row.querySelector('.item-total').textContent = total.toFixed(2);
+          calculateTotals();
+          
+          // Destacar el cambio
+          row.querySelector('.total-cell').classList.add('highlight-change');
+          setTimeout(() => {
+            row.querySelector('.total-cell').classList.remove('highlight-change');
+          }, 1500);
+        });
+      });
+      
+      // Similar para mano de obra
+      document.querySelectorAll('#laborTable .quantity-input, #laborTable .price-input').forEach(input => {
+        input.addEventListener('input', function() {
+          const row = this.closest('tr');
+          const hours = parseFloat(row.querySelector('.quantity-input').value) || 0;
+          const rate = parseFloat(row.querySelector('.price-input').value) || 0;
+          const total = hours * rate;
+          
+          row.querySelector('.labor-item-total').textContent = total.toFixed(2);
+          calculateTotals();
+          
+          // Destacar el cambio
+          row.querySelector('.labor-total-cell').classList.add('highlight-change');
+          setTimeout(() => {
+            row.querySelector('.labor-total-cell').classList.remove('highlight-change');
+          }, 1500);
+        });
+      });
+      
+      // Actualizar totales cuando cambia el margen
+      document.getElementById('markupPercentage').addEventListener('input', calculateTotals);
+      
+      // Agregar nuevo material
+      document.getElementById('addMaterial').addEventListener('click', function() {
+        const template = document.getElementById('material-row-template').content.cloneNode(true);
+        const newRow = template.querySelector('tr');
+        
+        // Reemplazar INDEX con el índice actual
+        newRow.innerHTML = newRow.innerHTML.replace(/INDEX/g, materialRows);
+        materialRows++;
+        
+        // Agregar eventos a los nuevos campos
+        const quantityInput = newRow.querySelector('.quantity-input');
+        const priceInput = newRow.querySelector('.price-input');
+        
+        [quantityInput, priceInput].forEach(input => {
+          input.addEventListener('input', function() {
+            const row = this.closest('tr');
+            const quantity = parseFloat(row.querySelector('.quantity-input').value) || 0;
+            const price = parseFloat(row.querySelector('.price-input').value) || 0;
+            const total = quantity * price;
+            
+            row.querySelector('.item-total').textContent = total.toFixed(2);
+            calculateTotals();
+          });
+        });
+        
+        // Agregar evento para eliminar fila
+        newRow.querySelector('.remove-row').addEventListener('click', function() {
+          this.closest('tr').remove();
+          calculateTotals();
+        });
+        
+        // Insertar la nueva fila antes del footer
+        document.querySelector('#materialsTable tbody').appendChild(newRow);
+        calculateTotals();
+      });
+      
+      // Agregar nueva mano de obra
+      document.getElementById('addLabor').addEventListener('click', function() {
+        const template = document.getElementById('labor-row-template').content.cloneNode(true);
+        const newRow = template.querySelector('tr');
+        
+        // Reemplazar INDEX con el índice actual
+        newRow.innerHTML = newRow.innerHTML.replace(/INDEX/g, laborRows);
+        laborRows++;
+        
+        // Agregar eventos a los nuevos campos
+        const hoursInput = newRow.querySelector('.quantity-input');
+        const rateInput = newRow.querySelector('.price-input');
+        
+        [hoursInput, rateInput].forEach(input => {
+          input.addEventListener('input', function() {
+            const row = this.closest('tr');
+            const hours = parseFloat(row.querySelector('.quantity-input').value) || 0;
+            const rate = parseFloat(row.querySelector('.price-input').value) || 0;
+            const total = hours * rate;
+            
+            row.querySelector('.labor-item-total').textContent = total.toFixed(2);
+            calculateTotals();
+          });
+        });
+        
+        // Agregar evento para eliminar fila
+        newRow.querySelector('.remove-row').addEventListener('click', function() {
+          this.closest('tr').remove();
+          calculateTotals();
+        });
+        
+        // Insertar la nueva fila
+        document.querySelector('#laborTable tbody').appendChild(newRow);
+        calculateTotals();
+      });
+      
+      // Mostrar/ocultar historial
+      document.querySelectorAll('.show-history').forEach(button => {
+        button.addEventListener('click', function(e) {
+          e.stopPropagation();
+          const materialId = this.getAttribute('data-material-id') || this.getAttribute('data-labor-id');
+          const tooltipId = this.getAttribute('data-material-id') ? 
+            `history-${materialId}` : `labor-history-${materialId}`;
+          const tooltip = document.getElementById(tooltipId);
+          
+          // Ocultar todos los tooltips primero
+          document.querySelectorAll('.history-tooltip').forEach(tip => {
+            tip.style.display = 'none';
+          });
+          
+          // Mostrar este tooltip
+          if (tooltip) {
+            tooltip.style.display = 'block';
+            tooltip.style.top = (this.offsetTop + this.offsetHeight) + 'px';
+            tooltip.style.left = this.offsetLeft + 'px';
+          }
+        });
+      });
+      
+      // Ocultar tooltips al hacer clic en otro lugar
+      document.addEventListener('click', function() {
+        document.querySelectorAll('.history-tooltip').forEach(tip => {
+          tip.style.display = 'none';
+        });
+      });
+      
+      // Inicializar
+      calculateTotals();
+    });
+  </script>
+</body>
+</html>

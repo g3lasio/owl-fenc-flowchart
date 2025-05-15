@@ -1,0 +1,56 @@
+# Node.js dependencies and build artifacts
+node_modules
+npm-debug.log
+yarn-debug.log
+yarn-error.log
+.npm
+*.tgz
+.env
+.env.*
+dist
+build
+coverage
+
+# Git related
+.git
+.gitignore
+.gitattributes
+.github
+
+# Development and test files
+tests
+**/*.test.ts
+**/*.spec.ts
+tools
+usage
+docs
+samples\ estimates
+
+# Editor directories and files
+.idea
+.vscode
+*.swp
+*.swo
+
+# System files
+.DS_Store
+Thumbs.db
+
+# Docker files
+Dockerfile*
+docker-compose*.yml
+
+# Logs
+logs
+*.log
+
+# Cache directories 
+.cache
+.npm
+.eslintcache
+.mypy_cache
+.pytest_cache
+
+# Don't ignore these specific files
+!.env.example
+!tsconfig.json

@@ -1,0 +1,58 @@
+## Traefik Static Configuration for Owl-Fenc-Flowchart
+
+# Global configuration
+global:
+  checkNewVersion: true
+  sendAnonymousUsage: false
+
+# Log configuration
+log:
+  level: INFO
+  format: json
+
+# Access logs
+accessLog:
+  format: json
+
+# API and dashboard configuration
+api:
+  dashboard: true
+  insecure: true  # Only for development. In production, use secure: true with proper authentication
+
+# Entry points configuration
+entryPoints:
+  web:
+    address: ":80"
+    http:
+      redirections:
+        entryPoint:
+          to: websecure
+          scheme: https
+  
+  websecure:
+    address: ":443"
+    http:
+      tls:
+        certResolver: letsencrypt
+
+# Certificate resolvers
+certificatesResolvers:
+  letsencrypt:
+    acme:
+      email: support@owlfenc.com
+      storage: /certs/acme.json
+      httpChallenge:
+        entryPoint: web
+
+# Docker provider configuration
+providers:
+  docker:
+    endpoint: "unix:///var/run/docker.sock"
+    exposedByDefault: false
+    network: owl_network
+    swarmMode: false
+    watch: true
+  
+  file:
+    filename: /etc/traefik/dynamic-conf.yml
+    watch: true

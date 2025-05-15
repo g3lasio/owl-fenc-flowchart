@@ -1,0 +1,25 @@
+version: '3.8'
+
+services:
+  traefik:
+    image: traefik:v2.9
+    container_name: owl-fenc-traefik
+    restart: always
+    ports:
+      - "80:80"     # HTTP
+      - "443:443"   # HTTPS
+      - "8080:8080" # Dashboard
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./config/traefik.yml:/etc/traefik/traefik.yml:ro
+      - ./config/dynamic-conf.yml:/etc/traefik/dynamic-conf.yml:ro
+      - ./certs:/certs:ro
+    networks:
+      - owl_network
+      - traefik_network
+
+networks:
+  owl_network:
+    external: true
+  traefik_network:
+    driver: bridge

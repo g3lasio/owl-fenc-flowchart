@@ -749,4 +749,19 @@ export class FlowManagerEngine {
       return null;
     }
   }
+
+  /**
+   * Obtiene la información del cliente desde el contexto 
+   * @param sessionId ID de la sesión
+   * @returns Información del cliente desde el contexto
+   */
+  getClientInfoFromContext(sessionId: string): any {
+    const context = this.getConversationContext(sessionId);
+    
+    if (!context || !context.client) {
+      return null;
+    }
+    
+    return context.client;
+  }
 }

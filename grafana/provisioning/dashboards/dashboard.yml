@@ -1,0 +1,13 @@
+apiVersion: 1
+
+providers:
+  - name: 'Owl-Fenc-Flowchart'
+    orgId: 1
+    folder: 'Owl-Fenc-Flowchart'
+    type: file
+    disableDeletion: false
+    updateIntervalSeconds: 10
+    allowUiUpdates: true
+    options:
+      path: /etc/grafana/provisioning/dashboards/json
+      foldersFromFilesStructure: true

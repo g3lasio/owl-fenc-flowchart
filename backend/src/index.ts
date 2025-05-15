@@ -5,6 +5,14 @@ import { AnthropicClient } from './services/anthropic.client';
 import { ChatController } from './api/chat.controller';
 import { ManualEstimateController } from './api/manual-estimate.controller';
 import { SimpleMervinEngine } from './engines/simple-mervin.engine';
+import { FlowManagerEngine } from './engines/flow-manager.engine';
+import { AdaptiveLearningEngine } from './engines/adaptive-learning.engine';
+import { PriceApiService } from './services/price-api.service';
+import { PriceResearchService } from './services/price-research.service';
+import { ConstructionMethodService } from './services/construction-method.service';
+import { ConstructionMethodCacheService } from './services/construction-method-cache.service';
+import { ApiUsageService } from './services/api-usage.service';
+import { MaterialSupplierService } from './services/material-supplier.service';
 import { config } from './config/config';
 
 // Configuración de Express
@@ -26,12 +34,43 @@ app.use(express.static(path.join(__dirname, 'public')));
 const openAIClient = new OpenAIClient(config.openai?.apiKey || '');
 const anthropicClient = new AnthropicClient(config.anthropic?.apiKey || '');
 
+// Inicializar servicios
+const priceApiService = new PriceApiService();
+const priceResearchService = new PriceResearchService(openAIClient);
+const constructionMethodCache = new ConstructionMethodCacheService();
+const constructionMethodService = new ConstructionMethodService(anthropicClient, constructionMethodCache);
+const apiUsageService = new ApiUsageService();
+const materialSupplierService = new MaterialSupplierService();
+
 // Crear una instancia del motor simplificado de Mervin
 const simpleMervinEngine = new SimpleMervinEngine(openAIClient, anthropicClient);
 
+// Crear los motores avanzados
+const flowManagerEngine = new FlowManagerEngine(
+  openAIClient,
+  anthropicClient,
+  priceApiService,
+  priceResearchService,
+  constructionMethodService,
+  apiUsageService,
+  materialSupplierService,
+  'default' // ID del contratista
+);
+
+// Crear motor de aprendizaje adaptativo
+const adaptiveLearningEngine = new AdaptiveLearningEngine(
+  openAIClient,
+  anthropicClient,
+  'default' // ID del contratista
+);
+
 // Instanciar los controladores
 const chatController = new ChatController(simpleMervinEngine);
-const manualEstimateController = new ManualEstimateController(simpleMervinEngine);
+const manualEstimateController = new ManualEstimateController(
+  simpleMervinEngine,
+  flowManagerEngine,
+  adaptiveLearningEngine
+);
 
 // Middleware de logging
 app.use((req, res, next) => {

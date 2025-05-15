@@ -1,0 +1,44 @@
+# Base Dockerfile for Owl-Fenc-Flowchart Services
+FROM node:18-alpine as base
+
+# Create app directory
+WORKDIR /app
+
+# Install app dependencies
+COPY package*.json ./
+
+# Install dependencies
+RUN npm ci --only=production
+
+# Copy app source
+COPY . .
+
+# Build TypeScript code
+RUN npm run build
+
+# Remove development dependencies
+RUN npm prune --production
+
+# Use a smaller image for the final container
+FROM node:18-alpine as release
+
+# Create app directory
+WORKDIR /app
+
+# Copy built app from base
+COPY --from=base /app/dist ./dist
+COPY --from=base /app/node_modules ./node_modules
+COPY --from=base /app/package*.json ./
+
+# Set environment variables
+ENV NODE_ENV=production
+
+# Expose port
+EXPOSE 3000
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
+  CMD node -e "const http = require('http'); const options = { hostname: 'localhost', port: process.env.PORT || 3000, path: '/api/health', timeout: 2000 }; const req = http.request(options, (res) => { console.log('STATUS:', res.statusCode); process.exit(res.statusCode === 200 ? 0 : 1); }); req.on('error', (e) => { console.error('ERROR:', e); process.exit(1); }); req.end();"
+
+# Default command
+CMD [ "node", "dist/server.js" ]

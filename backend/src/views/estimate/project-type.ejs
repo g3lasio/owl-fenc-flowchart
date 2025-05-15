@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title><%= title %></title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'Arial', sans-serif;
+      padding-top: 20px;
+    }
+    .project-card {
+      transition: transform 0.3s, box-shadow 0.3s;
+      cursor: pointer;
+      height: 100%;
+    }
+    .project-card:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+    }
+    .project-img {
+      height: 160px;
+      object-fit: cover;
+      border-top-left-radius: 8px;
+      border-top-right-radius: 8px;
+    }
+    .step-indicator {
+      display: flex;
+      justify-content: center;
+      margin-bottom: 30px;
+    }
+    .step {
+      width: 30px;
+      height: 30px;
+      border-radius: 50%;
+      background-color: #e9ecef;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 10px;
+      font-weight: bold;
+    }
+    .step.active {
+      background-color: #4a6741;
+      color: white;
+    }
+    .step-line {
+      height: 3px;
+      width: 50px;
+      background-color: #e9ecef;
+      margin-top: 15px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1 class="text-center mb-4"><%= title %></h1>
+    
+    <div class="step-indicator">
+      <div class="step active">1</div>
+      <div class="step-line"></div>
+      <div class="step">2</div>
+      <div class="step-line"></div>
+      <div class="step">3</div>
+      <div class="step-line"></div>
+      <div class="step">4</div>
+      <div class="step-line"></div>
+      <div class="step">5</div>
+      <div class="step-line"></div>
+      <div class="step">6</div>
+    </div>
+    
+    <div class="row justify-content-center mb-4">
+      <div class="col-md-8">
+        <div class="alert alert-primary">
+          <p class="mb-0">Para comenzar, selecciona el tipo de proyecto para el cual necesitas un estimado:</p>
+        </div>
+      </div>
+    </div>
+    
+    <form action="/estimate/project-type" method="POST">
+      <div class="row row-cols-1 row-cols-md-2 g-4 justify-content-center">
+        <% projectTypes.forEach(type => { %>
+          <div class="col">
+            <label class="w-100 h-100">
+              <input type="radio" name="projectType" value="<%= type.id %>" class="d-none" required>
+              <div class="card project-card h-100">
+                <img src="<%= type.imageUrl %>" class="card-img-top project-img" alt="<%= type.name %>">
+                <div class="card-body">
+                  <h5 class="card-title"><%= type.name %></h5>
+                  <p class="card-text"><%= type.description %></p>
+                </div>
+              </div>
+            </label>
+          </div>
+        <% }); %>
+      </div>
+      
+      <div class="d-flex justify-content-between mt-4">
+        <a href="/estimate/start" class="btn btn-secondary">Atrás</a>
+        <button type="submit" class="btn btn-primary">Continuar</button>
+      </div>
+    </form>
+  </div>
+  
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  <script>
+    // Añadir clase 'selected' a la tarjeta cuando se selecciona el radio button
+    document.querySelectorAll('input[name="projectType"]').forEach(input => {
+      input.addEventListener('change', function() {
+        document.querySelectorAll('.project-card').forEach(card => {
+          card.classList.remove('border-primary');
+        });
+        this.closest('.project-card').classList.add('border-primary');
+      });
+    });
+  </script>
+</body>
+</html>

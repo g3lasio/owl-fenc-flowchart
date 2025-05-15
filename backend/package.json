@@ -10,7 +10,14 @@
     "watch": "tsc -w",
     "test": "mocha -r ts-node/register tests/**/*.ts",
     "test:unit": "mocha -r ts-node/register tests/unit/**/*.ts",
-    "test:materials": "ts-node -r tsconfig-paths/register src/test-material-engine.ts"
+    "test:materials": "ts-node -r tsconfig-paths/register src/test-material-engine.ts",
+    "start:deepsearch": "ts-node -r tsconfig-paths/register src/microservice-runner.ts deepsearch-engine",
+    "start:unstructured": "ts-node -r tsconfig-paths/register src/microservice-runner.ts unstructured-input",
+    "start:error-handler": "ts-node -r tsconfig-paths/register src/microservice-runner.ts error-handler",
+    "start:microservices": "concurrently \"npm run start:deepsearch\" \"npm run start:unstructured\" \"npm run start:error-handler\"",
+    "docker:build": "cd .. && ./deploy.sh build",
+    "docker:start": "cd .. && ./deploy.sh start",
+    "docker:stop": "cd .. && ./deploy.sh stop"
   },
   "keywords": [
     "estimate",

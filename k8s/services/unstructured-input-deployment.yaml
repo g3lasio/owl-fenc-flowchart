@@ -1,0 +1,79 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: unstructured-input-service
+  namespace: owl-fenc
+  labels:
+    app: unstructured-input-service
+    service: owl-fenc
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: unstructured-input-service
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  template:
+    metadata:
+      labels:
+        app: unstructured-input-service
+    spec:
+      containers:
+      - name: unstructured-input-service
+        image: owlfenc/owl-fenc-unstructured-input:latest
+        ports:
+        - containerPort: 3000
+        env:
+        - name: NODE_ENV
+          valueFrom:
+            configMapKeyRef:
+              name: owl-fenc-config
+              key: NODE_ENV
+        - name: RABBITMQ_HOST
+          valueFrom:
+            configMapKeyRef:
+              name: owl-fenc-config
+              key: RABBITMQ_HOST
+        - name: RABBITMQ_PORT
+          valueFrom:
+            configMapKeyRef:
+              name: owl-fenc-config
+              key: RABBITMQ_PORT
+        - name: RABBITMQ_URL
+          valueFrom:
+            secretKeyRef:
+              name: owl-fenc-secrets
+              key: rabbitmq-url
+        - name: OPENAI_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: owl-fenc-secrets
+              key: openai-api-key
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "200m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+        livenessProbe:
+          httpGet:
+            path: /api/health
+            port: 3000
+          initialDelaySeconds: 30
+          periodSeconds: 15
+        readinessProbe:
+          httpGet:
+            path: /api/health
+            port: 3000
+          initialDelaySeconds: 15
+          periodSeconds: 10
+        volumeMounts:
+        - name: temp-storage
+          mountPath: /app/temp
+      volumes:
+      - name: temp-storage
+        emptyDir: {}

@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: unstructured-input-service
+  namespace: owl-fenc
+  labels:
+    app: unstructured-input-service
+    service: owl-fenc
+spec:
+  selector:
+    app: unstructured-input-service
+  ports:
+  - port: 3000
+    targetPort: 3000
+    name: http
+  type: ClusterIP

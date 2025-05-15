@@ -1,0 +1,36 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: owl-fenc-ingress
+  namespace: owl-fenc
+  annotations:
+    kubernetes.io/ingress.class: "nginx"
+    nginx.ingress.kubernetes.io/rewrite-target: /$1
+    nginx.ingress.kubernetes.io/ssl-redirect: "false"
+    nginx.ingress.kubernetes.io/use-regex: "true"
+spec:
+  rules:
+  - host: owl-fenc.local
+    http:
+      paths:
+      - path: /api/deepsearch(/|$)(.*)
+        pathType: Prefix
+        backend:
+          service:
+            name: deepsearch-engine
+            port:
+              number: 3000
+      - path: /api/unstructured(/|$)(.*)
+        pathType: Prefix
+        backend:
+          service:
+            name: unstructured-input-service
+            port:
+              number: 3000
+      - path: /api/error(/|$)(.*)
+        pathType: Prefix
+        backend:
+          service:
+            name: error-handler-service
+            port:
+              number: 3000

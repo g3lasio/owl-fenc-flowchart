@@ -1,0 +1,32 @@
+# Dockerfile for Adaptive Learning Service
+FROM node:18-alpine
+
+# Create app directory
+WORKDIR /app
+
+# Install app dependencies
+COPY package*.json ./
+
+# Install dependencies
+RUN npm ci --only=production
+
+# Copy service source
+COPY tsconfig.json ./
+COPY ./src ./src
+
+# Build TypeScript code
+RUN npm run build
+
+# Set environment variables
+ENV NODE_ENV=production
+ENV SERVICE_NAME=adaptive-learning-service
+
+# Expose port
+EXPOSE 3000
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
+  CMD node -e "const http = require('http'); const options = { hostname: 'localhost', port: process.env.PORT || 3000, path: '/api/health', timeout: 2000 }; const req = http.request(options, (res) => { console.log('STATUS:', res.statusCode); process.exit(res.statusCode === 200 ? 0 : 1); }); req.on('error', (e) => { console.error('ERROR:', e); process.exit(1); }); req.end();"
+
+# Start the service
+CMD [ "node", "dist/microservice-runner.js", "adaptive-learning" ]
