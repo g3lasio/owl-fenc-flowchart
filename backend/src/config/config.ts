@@ -49,6 +49,30 @@ export interface Config {
     ttlSeconds: number;
     persistToDisk: boolean;
     cachePath: string;
+    memoryCacheMaxSize: number;
+    memoryCacheDefaultTTL: number;
+    persistentCacheDefaultTTL: number;
+    policies: {
+      ai_response: {
+        ttl: number;
+        tiers: string[];
+      };
+      embeddings: {
+        ttl: number;
+        tiers: string[];
+      };
+      project_analysis: {
+        ttl: number;
+        tiers: string[];
+      };
+      material_prices: {
+        ttl: number;
+        tiers: string[];
+        backgroundRefresh: boolean;
+        refreshThreshold: number;
+      };
+    };
+  };
     ttl: number;
     maxEntries: number;
   };
@@ -157,8 +181,29 @@ export const config: Config = {
     ttlSeconds: parseInt(process.env.CACHE_TTL_SECONDS || '86400'), // 24 horas por defecto
     persistToDisk: process.env.CACHE_PERSIST_TO_DISK !== 'false',
     cachePath: process.env.CACHE_PATH || 'cache',
-    ttl: parseInt(process.env.CACHE_TTL || '86400'), // 24 hours
-    maxEntries: parseInt(process.env.CACHE_MAX_ENTRIES || '1000')
+    memoryCacheMaxSize: parseInt(process.env.MEMORY_CACHE_MAX_SIZE || '1000'),
+    memoryCacheDefaultTTL: parseInt(process.env.MEMORY_CACHE_TTL || '300'), // 5 minutes
+    persistentCacheDefaultTTL: parseInt(process.env.PERSISTENT_CACHE_TTL || '86400'), // 24 hours
+    policies: {
+      ai_response: {
+        ttl: parseInt(process.env.AI_RESPONSE_CACHE_TTL || '3600'), // 1 hour
+        tiers: (process.env.AI_RESPONSE_CACHE_TIERS || 'memory,persistent').split(',')
+      },
+      embeddings: {
+        ttl: parseInt(process.env.EMBEDDINGS_CACHE_TTL || '604800'), // 1 week
+        tiers: (process.env.EMBEDDINGS_CACHE_TIERS || 'memory,persistent').split(',')
+      },
+      project_analysis: {
+        ttl: parseInt(process.env.PROJECT_ANALYSIS_CACHE_TTL || '86400'), // 24 hours
+        tiers: (process.env.PROJECT_ANALYSIS_CACHE_TIERS || 'memory,persistent').split(',')
+      },
+      material_prices: {
+        ttl: parseInt(process.env.MATERIAL_PRICES_CACHE_TTL || '43200'), // 12 hours
+        tiers: (process.env.MATERIAL_PRICES_CACHE_TIERS || 'memory,persistent').split(','),
+        backgroundRefresh: process.env.MATERIAL_PRICES_BACKGROUND_REFRESH === 'true',
+        refreshThreshold: parseFloat(process.env.MATERIAL_PRICES_REFRESH_THRESHOLD || '0.75')
+      }
+    }
   },
   research: {
     enableAI: process.env.ENABLE_AI_RESEARCH === 'true',

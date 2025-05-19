@@ -1,31 +1,28 @@
 import { MicroserviceBase, MessageBroker } from '../architecture/microservices-architecture';
-import { OpenAIClient } from '../services/openai.client';
-import { AnthropicClient } from '../services/anthropic.client';
-import { PersistentCacheService } from '../services/persistent-cache.service';
+import { AIServiceV2 } from '../services/ai-service-v2';
+import { AICompletionOptions, AIImageAnalysisOptions } from '../interfaces/ai-provider.interfaces';
+import { TieredCacheService } from '../services/tiered-cache.service';
 import { config } from '../config/config';
+import { ServiceFactory } from '../factories/service.factory';
+import { ModelPriority, ModelSelectionStrategy, TaskType } from '../utils/model-selection';
 
 /**
  * Servicio para procesar entradas no estructuradas como texto libre,
  * imágenes, PDFs y otros documentos, para extraer información relevante
  * para el sistema de estimación
  */
-export class UnstructuredInputService extends MicroserviceBase {
-  private openAIClient: OpenAIClient;
-  private anthropicClient: AnthropicClient;
-  private persistentCache: PersistentCacheService;
+export class UnstructuredInputServiceV2 extends MicroserviceBase {
+  private aiService: AIServiceV2;
+  private cacheService: TieredCacheService;
   
   constructor(
-    private readonly messageBroker: MessageBroker,
-    private readonly cachePath: string = config.cache.cachePath
+    private readonly messageBroker: MessageBroker
   ) {
-    super('UnstructuredInputService', '1.0.0');
+    super('UnstructuredInputServiceV2', '2.0.0');
     
-    // Inicializar clientes de IA
-    this.openAIClient = new OpenAIClient(config.openai.apiKey);
-    this.anthropicClient = new AnthropicClient(config.anthropic.apiKey);
-    
-    // Inicializar caché persistente
-    this.persistentCache = new PersistentCacheService(this.cachePath);
+    // Get services from factory
+    this.aiService = ServiceFactory.getAIServiceV2();
+    this.cacheService = ServiceFactory.getTieredCacheService();
     
     // Suscribirse a eventos
     this.configureBrokerSubscriptions();

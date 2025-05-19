@@ -50,6 +50,26 @@ export class ApiUsageService {
   }
   
   /**
+   * Generic logger for API usage
+   */
+  logAPIUsage(
+    provider: string,
+    operationType: string,
+    details: { model?: string; promptLength?: number }
+  ): void {
+    // Determine which provider to log for
+    if (provider === 'openai') {
+      const estimatedTokens = details.promptLength ? Math.ceil(details.promptLength / 4) : 0;
+      this.logOpenAIUsage(estimatedTokens, 0);
+    } else if (provider === 'anthropic') {
+      const estimatedTokens = details.promptLength ? Math.ceil(details.promptLength / 4) : 0;
+      this.logAnthropicUsage(estimatedTokens, 0);
+    } else {
+      console.log(`API usage logged for provider: ${provider}, operation: ${operationType}, model: ${details.model || 'unknown'}`);
+    }
+  }
+  
+  /**
    * Registra uso de la API de OpenAI
    */
   logOpenAIUsage(promptTokens: number, completionTokens: number): void {

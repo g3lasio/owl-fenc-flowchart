@@ -1,92 +1,92 @@
 /**
  * Microservice Runner
  * 
- * Este script inicia un microservicio específico según el argumento pasado
- * Se utiliza como punto de entrada en los contenedores Docker
+ * This script starts a specific microservice based on the passed argument
+ * Used as the entry point in Docker containers
+ * 
+ * Refactored to use the ServiceFactory for proper dependency injection
  */
 
 import { config } from './config/config';
-import { RabbitMQBroker } from './architecture/microservices-architecture';
-import { DeepSearchEngine } from './microservices/deepsearch-engine';
-import { UnstructuredInputService } from './microservices/unstructured-input-service';
-import { ErrorHandlerService } from './microservices/error-handler-service';
-import { AdaptiveLearningService } from './microservices/adaptive-learning-service';
+import { MessageBroker } from './architecture/microservices-architecture';
+import { ServiceFactory } from './factories/service.factory';
 
-// Obtener el servicio a iniciar desde los argumentos
+// Get the service to start from arguments
 const serviceArg = process.argv[2];
 
 if (!serviceArg) {
-  console.error('Error: Debe especificar el servicio a iniciar como argumento');
-  console.error('Uso: node microservice-runner.js <service-name>');
-  console.error('Servicios disponibles: deepsearch-engine, unstructured-input, error-handler, adaptive-learning');
+  console.error('Error: You must specify the service to start as an argument');
+  console.error('Usage: node microservice-runner.js <service-name>');
+  console.error('Available services: deepsearch-engine, unstructured-input, error-handler, adaptive-learning');
   process.exit(1);
 }
 
-// Inicializar broker de mensajes
-console.log(`Inicializando message broker para microservicio: ${serviceArg}`);
+// Initialize service factory
+console.log(`Initializing service factory for microservice: ${serviceArg}`);
+const serviceFactory = ServiceFactory.getInstance();
+const messageBroker = serviceFactory.getMessageBroker();
 
-const brokerUrl = process.env.RABBITMQ_URL || 'amqp://localhost';
-const messageBroker = new RabbitMQBroker(brokerUrl);
-
-// Iniciar el servicio correspondiente
+// Start the corresponding service
 async function startService() {
-  console.log(`Iniciando microservicio: ${serviceArg}`);
+  console.log(`Starting microservice: ${serviceArg}`);
 
   switch (serviceArg) {
     case 'deepsearch-engine':
-      new DeepSearchEngine(messageBroker, process.env.CACHE_PATH || config.cache.cachePath);
+      serviceFactory.createDeepSearchEngine();
       break;
       
     case 'unstructured-input':
-      new UnstructuredInputService(messageBroker, process.env.CACHE_PATH || config.cache.cachePath);
+      serviceFactory.createUnstructuredInputService();
       break;
       
     case 'error-handler':
-      new ErrorHandlerService(messageBroker);
+      serviceFactory.createErrorHandlerService();
       break;
       
     case 'adaptive-learning':
-      new AdaptiveLearningService(messageBroker, process.env.CACHE_PATH || config.cache.cachePath);
+      serviceFactory.createAdaptiveLearningService();
       break;
       
     default:
-      console.error(`Error: Servicio desconocido: ${serviceArg}`);
-      console.error('Servicios disponibles: deepsearch-engine, unstructured-input, error-handler, adaptive-learning');
+      console.error(`Error: Unknown service: ${serviceArg}`);
+      console.error('Available services: deepsearch-engine, unstructured-input, error-handler, adaptive-learning');
       process.exit(1);
   }
 
-  console.log(`Microservicio ${serviceArg} iniciado correctamente`);
+  console.log(`Microservice ${serviceArg} started successfully`);
 
-  // Configurar manejadores para terminación
-  setupProcessHandlers();
+  // Configure process handlers for graceful shutdown
+  setupProcessHandlers(messageBroker);
 }
 
-// Configurar manejadores para señales de proceso
-function setupProcessHandlers() {
+// Configure handlers for process signals
+function setupProcessHandlers(messageBroker: MessageBroker) {
   process.on('SIGTERM', async () => {
-    console.log('Recibida señal SIGTERM, cerrando conexiones...');
+    console.log('Received SIGTERM signal, closing connections...');
     await messageBroker.close();
     process.exit(0);
   });
 
   process.on('SIGINT', async () => {
-    console.log('Recibida señal SIGINT, cerrando conexiones...');
+    console.log('Received SIGINT signal, closing connections...');
     await messageBroker.close();
     process.exit(0);
   });
 
   process.on('uncaughtException', (error) => {
-    console.error('Error no capturado:', error);
+    console.error('Uncaught exception:', error);
+    // Log to error tracking service in production
     process.exit(1);
   });
 
   process.on('unhandledRejection', (reason, promise) => {
-    console.error('Rechazo de promesa no manejado:', reason);
+    console.error('Unhandled promise rejection:', reason);
+    // In production, we should log these to an error tracking service
   });
 }
 
-// Iniciar el servicio
+// Start the service
 startService().catch(err => {
-  console.error('Error iniciando el servicio:', err);
+  console.error('Error starting the service:', err);
   process.exit(1);
 });
